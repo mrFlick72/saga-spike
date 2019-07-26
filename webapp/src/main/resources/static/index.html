@@ -11,27 +11,28 @@
 </ul>
 
 <script src="/webjars/jquery/3.4.1/jquery.min.js"></script>
-<script src="/webjars/stomp-websocket/2.3.3-1/stomp.js"></script>
-<script src="/webjars/sockjs-client/1.3.0/dist/sockjs.min.js"></script>
 
 <script>
-    window.onload = connect("/job");
+    window.onload = loadData();
 
-    function connect(messageRequestUrl) {
-        var socket = new SockJS(messageRequestUrl);
-        var stompClient = Stomp.over(socket);
-        stompClient.connect({}, function (frame) {
-            stompClient.subscribe('/notify/job', function (message) {
+    function loadData() {
+        $.ajax("/hello/Valerio")
+            .done(function (data) {
                 var ul = $("<ul></ul>");
 
                 var clone = ul.clone();
-                clone.text(message);
+                clone.text(data);
 
                 $("#list")
                     .append(clone)
             })
-        });
+    }
+
+    function clickme() {
+        console.log("the button was clicked")
     }
 </script>
+
+<button onclick="clickme()">click me</button>
 </body>
 </html>
