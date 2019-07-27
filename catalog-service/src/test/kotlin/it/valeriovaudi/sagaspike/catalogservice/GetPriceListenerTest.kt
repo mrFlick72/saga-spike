@@ -1,6 +1,7 @@
 package it.valeriovaudi.sagaspike.catalogservice
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import it.valeriovaudi.sagaspike.catalogservice.GoodsWithPrice.Companion.empty
 import org.hamcrest.core.Is
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertThat
@@ -53,5 +54,18 @@ class GetPriceListenerTest {
         print("response:  $response")
         assertNotNull(response)
         assertThat(response.payload as String, Is.`is`(objectMapper.writeValueAsString(goodsWithPrice)))
+    }
+
+    @Test
+    fun `do not find a goods with price`() {
+        val message = withPayload(GoodsWithPriceMessageRequest(catalogId, "barcode_notFound")).build()
+
+        catalogMessageChannel.goodsPricingRequestChannel().send(message)
+
+        val response = messageCollector.forChannel(catalogMessageChannel.goodsPricingResponseChannel())
+                .poll(1000, TimeUnit.MILLISECONDS)
+        print("response:  $response")
+        assertNotNull(response)
+        assertThat(response.payload as String, Is.`is`(objectMapper.writeValueAsString(empty())))
     }
 }

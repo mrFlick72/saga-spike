@@ -9,5 +9,9 @@ data class Price(val price: BigDecimal, val currency: String)
 
 data class Catalog(@Id val id: String, val goods: List<GoodsWithPrice>)
 
-data class GoodsWithPrice(val goods: Goods, val price: Price)
+data class GoodsWithPrice(val goods: Goods, val price: Price) {
 
+    companion object {
+        fun empty() = GoodsWithPrice(Goods("", ""), Price(BigDecimal.ZERO, ""))
+    }
+}
