@@ -1,6 +1,9 @@
 package it.valeriovaudi.sagaspike.catalogservice
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.hamcrest.core.Is
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThat
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -11,6 +14,7 @@ import org.springframework.messaging.support.MessageBuilder.withPayload
 import org.springframework.test.context.junit4.SpringRunner
 import java.math.BigDecimal
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 @SpringBootTest
@@ -23,14 +27,16 @@ class GetPriceListenerTest {
     @Autowired
     lateinit var messageCollector: MessageCollector
 
+    val objectMapper: ObjectMapper = ObjectMapper()
+
     @Autowired
     lateinit var catalogRepository: CatalogRepository
 
     val catalogId = UUID.randomUUID().toString()
+    val goodsWithPrice = GoodsWithPrice(Goods("barcode", "A_GOODS_NAME"), Price(BigDecimal.ONE, "EUR"))
 
     @Before
     fun setUp() {
-        val goodsWithPrice = GoodsWithPrice(Goods("barcode", "A_GOODS_NAME"), Price(BigDecimal.ONE, "EUR"))
 
         catalogRepository.save(Catalog(catalogId, listOf(goodsWithPrice)))
                 .block()
@@ -38,18 +44,14 @@ class GetPriceListenerTest {
 
     @Test
     fun `get a goods with price`() {
-        println("catalogRepository.findAll().collectList()")
-        println(catalogRepository.findAll().collectList().block())
-
         val message = withPayload(GoodsWithPriceMessageRequest(catalogId, "barcode")).build()
 
         catalogMessageChannel.goodsPricingRequestChannel().send(message)
 
-        Thread.sleep(100)
-        val response = messageCollector.forChannel(catalogMessageChannel.goodsPricingResponseChannel()).poll()
+        val response = messageCollector.forChannel(catalogMessageChannel.goodsPricingResponseChannel())
+                .poll(1000, TimeUnit.MILLISECONDS)
 
         assertNotNull(response)
-
-        println("response: ${response.payload}")
+        assertThat(response.payload as String, Is.`is`(objectMapper.writeValueAsString(goodsWithPrice)))
     }
 }
