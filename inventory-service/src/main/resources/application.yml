@@ -3,8 +3,6 @@ spring:
     stream:
       bindings:
         reserveGoodsRequestChannel:
-          destination: reserveGoodsRequestChannel
           group: reserveGoodsRequest
         reserveGoodsResponseChannel:
-          destination: reserveGoodsResponseChannel
           group: reserveGoodsResponse

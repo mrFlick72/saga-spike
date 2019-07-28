@@ -73,13 +73,16 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
     @StreamListener
     fun handleGoodsPriceRequest(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
                                 @Output("reserveGoodsResponseChannel") output: FluxSender) {
-        println("message!!!!!!!!!!!!!!!!!!!!!!!")
         output.send(input.flatMap { message ->
             message.payload.let { reserveGoods.execute(it.barcode, it.quantity) }
                     .map { withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
 
         })
+    }
 
+    @StreamListener("errorChannel")
+    fun error(message: Message<*>) {
+        println("Handling ERROR: $message")
     }
 }
 
