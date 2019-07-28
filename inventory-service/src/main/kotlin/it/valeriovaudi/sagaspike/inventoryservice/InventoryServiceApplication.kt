@@ -1,5 +1,7 @@
 package it.valeriovaudi.sagaspike.inventoryservice
 
+import org.springframework.boot.ApplicationArguments
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.cloud.stream.annotation.EnableBinding
@@ -14,6 +16,7 @@ import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.support.MessageBuilder.withPayload
+import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -31,6 +34,22 @@ class InventoryServiceApplication {
 
 fun main(args: Array<String>) {
     runApplication<InventoryServiceApplication>(*args)
+}
+
+@Component
+class Initializer(private val inventoryRepository: InventoryRepository) : ApplicationRunner {
+    override fun run(args: ApplicationArguments?) {
+        val goodsList = listOf(
+                Goods("A_BARCODE_1", "A_GOODS_1", 10),
+                Goods("A_BARCODE_2", "A_GOODS_2", 10),
+                Goods("A_BARCODE_3", "A_GOODS_3", 10),
+                Goods("A_BARCODE_4", "A_GOODS_4", 10)
+        )
+        inventoryRepository.deleteAll()
+                .thenMany(inventoryRepository.saveAll(goodsList))
+                .blockLast()
+    }
+
 }
 
 @Transactional(readOnly = true)
