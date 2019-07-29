@@ -25,8 +25,8 @@ import reactor.core.publisher.Mono
 
 
 @EnableIntegration
-@EnableBinding(InventoryMessageChannel::class)
 @SpringBootApplication
+@EnableBinding(InventoryMessageChannel::class)
 class InventoryServiceApplication {
 
     @Bean
@@ -119,8 +119,7 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
     @StreamListener(copyHeaders = "execution-id")
     fun handleGoodsReservation(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
                                @Output("reserveGoodsResponseChannel") output: FluxSender,
-                               @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender
-    ) {
+                               @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender) {
         output.send(input.flatMap { message ->
             message.payload.let { reserveGoods.execute(it.barcode, it.quantity) }
                     .map { withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
@@ -131,19 +130,15 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
     @StreamListener
     fun handleGoodsUnReservation(@Input("unReserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
-                                 @Output("unReserveGoodsResponseChannel") output: FluxSender) {
+                                 @Output("unReserveGoodsResponseChannel") output: FluxSender,
+                                 @Output("unReserveGoodsResponseChannel.reserveGoodsRequest.errors") error: FluxSender) {
         output.send(input.flatMap { message ->
             message.payload.let { reserveGoods.undo(it.barcode, it.quantity) }
                     .map { withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
+                    .onErrorResume { e -> error.send(Flux.just(e)).then(Mono.empty()) }
 
         })
     }
-
-    @StreamListener("errorChannel")
-    fun error(message: Message<*>) {
-        println(message)
-    }
-
 }
 
 
@@ -151,4 +146,6 @@ data class ReserveGoodsQuantity(var barcode: String, var quantity: Int) {
     constructor() : this("", 0)
 }
 
-data class ReservedGoodsQuantity(var barcode: String, var quantity: Int)
+data class ReservedGoodsQuantity(var barcode: String, var quantity: Int) {
+    constructor() : this("", 0)
+}
