@@ -118,13 +118,13 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
     @StreamListener(copyHeaders = "execution-id")
     fun handleGoodsReservation(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
-                               @Output("reserveGoodsResponseChannel") output: FluxSender
-//                               @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender
+                               @Output("reserveGoodsResponseChannel") output: FluxSender,
+                               @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender
     ) {
         output.send(input.flatMap { message ->
             message.payload.let { reserveGoods.execute(it.barcode, it.quantity) }
                     .map { withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
-//                    .onErrorResume { e -> error.send(Flux.just(e)).then(Mono.empty()) }
+                    .onErrorResume { e -> error.send(Flux.just(e)).then(Mono.empty()) }
 
         })
     }
@@ -146,6 +146,9 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
 }
 
-data class ReserveGoodsQuantity(val barcode: String, val quantity: Int)
 
-data class ReservedGoodsQuantity(val barcode: String, val quantity: Int)
+data class ReserveGoodsQuantity(var barcode: String, var quantity: Int) {
+    constructor() : this("", 0)
+}
+
+data class ReservedGoodsQuantity(var barcode: String, var quantity: Int)

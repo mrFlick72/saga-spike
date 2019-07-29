@@ -3,11 +3,7 @@ spring:
     stream:
       bindings:
         reserveGoodsRequestChannel:
-          consumer:
-            defaultRetryable: false
-            auto-bind-dlq: false
-          producer:
-            errorChannelEnabled: true
+          destination: reserveGoodsRequestChannel
           group: reserveGoodsRequest
 
         reserveGoodsResponseChannel:
