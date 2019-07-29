@@ -31,28 +31,49 @@ interface InventoryMessageChannel {
 
 class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
-    @StreamListener(copyHeaders = "execution-id")
+    @StreamListener
     fun handleGoodsReservation(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
                                @Output("reserveGoodsResponseChannel") output: FluxSender,
                                @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender) {
         output.send(input.flatMap { message ->
-            message.payload.let { reserveGoods.execute(it.barcode, it.quantity) }
-                    .map { MessageBuilder.withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
-                    .onErrorResume { e -> error.send(Flux.just(e)).then(Mono.empty()) }
+            message.payload.let {
+                reserveGoods.execute(it.barcode, it.quantity)
+            }
+                    .map(sendSuccessfulMessage(message))
+                    .onErrorResume(sendErrorMessage(error, message))
 
         })
     }
 
+
     @StreamListener
     fun handleGoodsUnReservation(@Input("unReserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
                                  @Output("unReserveGoodsResponseChannel") output: FluxSender,
-                                 @Output("unReserveGoodsResponseChannel.reserveGoodsRequest.errors") error: FluxSender) {
+                                 @Output("unReserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender) {
         output.send(input.flatMap { message ->
-            message.payload.let { reserveGoods.undo(it.barcode, it.quantity) }
-                    .map { MessageBuilder.withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
-                    .onErrorResume { e -> error.send(Flux.just(e)).then(Mono.empty()) }
-
+            message.payload.let {
+                reserveGoods.undo(it.barcode, it.quantity)
+            }
+                    .map(sendSuccessfulMessage(message))
+                    .onErrorResume(sendErrorMessage(error, message))
         })
+    }
+
+    private fun sendSuccessfulMessage(message: Message<ReserveGoodsQuantity>): (Goods) -> Message<ReservedGoodsQuantity> {
+        return {
+            MessageBuilder.withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity))
+                    .setHeaderIfAbsent("execution-id", message.headers.getOrDefault("execution-id", ""))
+                    .build()
+        }
+    }
+
+    private fun sendErrorMessage(error: FluxSender, message: Message<ReserveGoodsQuantity>): (Throwable) -> Mono<Message<ReservedGoodsQuantity>> {
+        return { e ->
+            error.send(Flux.just(MessageBuilder.withPayload(e)
+                    .setHeaderIfAbsent("execution-id", message.headers.getOrDefault("execution-id", ""))
+                    .build()))
+                    .then(Mono.empty())
+        }
     }
 }
 
