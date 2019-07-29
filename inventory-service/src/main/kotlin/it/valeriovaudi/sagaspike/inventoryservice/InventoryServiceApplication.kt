@@ -12,6 +12,8 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository
+import org.springframework.integration.annotation.ServiceActivator
+import org.springframework.integration.config.EnableIntegration
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
@@ -21,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+
+@EnableIntegration
 @EnableBinding(InventoryMessageChannel::class)
 @SpringBootApplication
 class InventoryServiceApplication {
@@ -30,6 +34,12 @@ class InventoryServiceApplication {
 
     @Bean
     fun reserveGoodsListener(reserveGoods: ReserveGoods) = ReserveGoodsListener(reserveGoods)
+
+    @ServiceActivator(inputChannel = "reserveGoodsRequestChannel.reserveGoodsRequest.errors") //channel name 'input.myGroup.errors'
+    fun error(message: Message<*>) {
+        println("Handling ERROR: $message")
+    }
+
 }
 
 fun main(args: Array<String>) {
@@ -38,7 +48,8 @@ fun main(args: Array<String>) {
 
 @Component
 class Initializer(private val inventoryRepository: InventoryRepository) : ApplicationRunner {
-    override fun run(args: ApplicationArguments?) {
+    override fun run(args: ApplicationArguments) {
+        println("INIT")
         val goodsList = listOf(
                 Goods("A_BARCODE_1", "A_GOODS_1", 10),
                 Goods("A_BARCODE_2", "A_GOODS_2", 10),
@@ -69,8 +80,17 @@ class ReserveGoods(private val inventoryRepository: InventoryRepository) {
                     .flatMap { goods -> reserveGoods(goods, quantity) }
                     .switchIfEmpty(Mono.error(NoGoodsAvailabilityException("The Goods $barcode availability is not enough")))
 
+
+    fun undo(barcode: String, quantity: Int) =
+            inventoryRepository.findByBarcode(barcode)
+                    .flatMap { goods -> unReserveGoods(goods, quantity) }
+
+
     private fun reserveGoods(goods: Goods, quantity: Int) =
             inventoryRepository.save(Goods(goods.barcode, goods.name, goods.availability - quantity))
+
+    private fun unReserveGoods(goods: Goods, quantity: Int) =
+            inventoryRepository.save(Goods(goods.barcode, goods.name, goods.availability + quantity))
 
     private fun filterAvailableGoods(goods: Goods, quantity: Int) =
             goods.availability >= quantity
@@ -85,15 +105,35 @@ interface InventoryMessageChannel {
     @Output
     fun reserveGoodsResponseChannel(): MessageChannel
 
+
+    @Input
+    fun unReserveGoodsRequestChannel(): SubscribableChannel
+
+    @Output
+    fun unReserveGoodsResponseChannel(): MessageChannel
+
 }
 
 class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
-    @StreamListener
-    fun handleGoodsPriceRequest(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
-                                @Output("reserveGoodsResponseChannel") output: FluxSender) {
+    @StreamListener(copyHeaders = "execution-id")
+    fun handleGoodsReservation(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
+                               @Output("reserveGoodsResponseChannel") output: FluxSender
+//                               @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender
+    ) {
         output.send(input.flatMap { message ->
             message.payload.let { reserveGoods.execute(it.barcode, it.quantity) }
+                    .map { withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
+//                    .onErrorResume { e -> error.send(Flux.just(e)).then(Mono.empty()) }
+
+        })
+    }
+
+    @StreamListener
+    fun handleGoodsUnReservation(@Input("unReserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
+                                 @Output("unReserveGoodsResponseChannel") output: FluxSender) {
+        output.send(input.flatMap { message ->
+            message.payload.let { reserveGoods.undo(it.barcode, it.quantity) }
                     .map { withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity)).build() }
 
         })
@@ -101,8 +141,9 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
     @StreamListener("errorChannel")
     fun error(message: Message<*>) {
-        println("Handling ERROR: $message")
+        println(message)
     }
+
 }
 
 data class ReserveGoodsQuantity(val barcode: String, val quantity: Int)
