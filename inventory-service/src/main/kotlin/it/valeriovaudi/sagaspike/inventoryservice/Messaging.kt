@@ -48,14 +48,12 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
     @StreamListener
     fun handleGoodsUnReservation(@Input("unReserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
-                                 @Output("unReserveGoodsResponseChannel") output: FluxSender,
-                                 @Output("unReserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender) {
+                                 @Output("unReserveGoodsResponseChannel") output: FluxSender) {
         output.send(input.flatMap { message ->
             message.payload.let {
                 reserveGoods.undo(it.barcode, it.quantity)
             }
                     .map(sendSuccessfulMessage(message))
-                    .onErrorResume(sendErrorMessage(error, message))
         })
     }
 
