@@ -98,7 +98,7 @@ class ErrorHandling(private val errorLogger: ErrorLogger) {
 
 open class ErrorLogger {
 
-    fun log(message: Message<*>?) {
+    open fun log(message: Message<*>?) {
         println("Handling ERROR: $message")
     }
 }

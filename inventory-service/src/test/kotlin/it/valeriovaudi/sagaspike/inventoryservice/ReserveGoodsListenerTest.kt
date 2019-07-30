@@ -84,5 +84,5 @@ class MockingBeans {
 
     @Bean
     @Primary
-    fun mockerdErrorLogger() = mock(ErrorLogger::class.java)
+    fun mockedErrorLogger() = mock(ErrorLogger::class.java)
 }
