@@ -5,10 +5,14 @@ import org.springframework.data.mongodb.repository.ReactiveMongoRepository
 import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 
+data class Goods(@Id val barcode: String, val name: String, val availability: Int)
 
 class NoGoodsAvailabilityException(message: String) : RuntimeException(message)
 
-data class Goods(@Id val barcode: String, val name: String, val availability: Int)
+@Transactional(readOnly = true)
+interface InventoryRepository : ReactiveMongoRepository<Goods, String> {
+    fun findByBarcode(barcode: String): Mono<Goods>
+}
 
 class ReserveGoods(private val inventoryRepository: InventoryRepository) {
 
@@ -32,9 +36,4 @@ class ReserveGoods(private val inventoryRepository: InventoryRepository) {
 
     private fun filterAvailableGoods(goods: Goods, quantity: Int) =
             goods.availability >= quantity
-}
-
-@Transactional(readOnly = true)
-interface InventoryRepository : ReactiveMongoRepository<Goods, String> {
-    fun findByBarcode(barcode: String): Mono<Goods>
 }
