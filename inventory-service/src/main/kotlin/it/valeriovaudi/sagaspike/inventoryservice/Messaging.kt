@@ -4,10 +4,13 @@ import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.cloud.stream.reactive.FluxSender
+import org.springframework.context.annotation.Configuration
+import org.springframework.integration.annotation.ServiceActivator
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.support.MessageBuilder
+import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -65,7 +68,8 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
         }
     }
 
-    private fun sendErrorMessage(error: FluxSender, message: Message<ReserveGoodsQuantity>): (Throwable) -> Mono<Message<ReservedGoodsQuantity>> {
+    private fun sendErrorMessage(error: FluxSender,
+                                 message: Message<ReserveGoodsQuantity>): (Throwable) -> Mono<Message<ReservedGoodsQuantity>> {
         return { e ->
             error.send(Flux.just(MessageBuilder.withPayload(e)
                     .setHeaderIfAbsent("execution-id", message.headers.getOrDefault("execution-id", ""))
@@ -75,11 +79,29 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
     }
 }
 
-
 data class ReserveGoodsQuantity(var barcode: String, var quantity: Int) {
     constructor() : this("", 0)
 }
 
 data class ReservedGoodsQuantity(var barcode: String, var quantity: Int) {
     constructor() : this("", 0)
+}
+
+@Configuration
+class ErrorHandling(private val errorLogger: ErrorLogger) {
+
+    @ServiceActivator(inputChannel = "reserveGoodsRequestChannel.reserveGoodsRequest.errors")
+    fun error(message: Message<*>) {
+        println(errorLogger)
+        errorLogger.log(message)
+    }
+
+}
+
+@Component
+open class ErrorLogger {
+
+    open fun log(message: Message<*>) {
+        println("Handling ERROR: $message")
+    }
 }
