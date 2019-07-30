@@ -91,15 +91,14 @@ class ErrorHandling(private val errorLogger: ErrorLogger) {
 
     @ServiceActivator(inputChannel = "reserveGoodsRequestChannel.reserveGoodsRequest.errors")
     fun error(message: Message<*>) {
-        println(errorLogger)
         errorLogger.log(message)
     }
 
 }
 
-class ErrorLogger {
+open class ErrorLogger {
 
-    fun log(message: Message<*>) {
+    fun log(message: Message<*>?) {
         println("Handling ERROR: $message")
     }
 }
