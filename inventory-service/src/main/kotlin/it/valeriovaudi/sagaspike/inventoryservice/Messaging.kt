@@ -99,9 +99,9 @@ class ErrorHandling(private val errorLogger: ErrorLogger) {
 }
 
 @Component
-open class ErrorLogger {
+class ErrorLogger {
 
-    open fun log(message: Message<*>) {
+    fun log(message: Message<*>) {
         println("Handling ERROR: $message")
     }
 }

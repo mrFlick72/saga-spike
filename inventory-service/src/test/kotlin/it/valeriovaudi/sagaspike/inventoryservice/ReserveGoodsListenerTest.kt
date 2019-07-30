@@ -6,9 +6,14 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.cloud.stream.test.binder.MessageCollector
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Primary
 import org.springframework.messaging.support.MessageBuilder
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.junit4.SpringRunner
@@ -65,9 +70,19 @@ class ReserveGoodsListenerTest {
         val response = messageCollector.forChannel(inventoryMessageChannel.reserveGoodsResponseChannel())
                 .poll(1000, TimeUnit.MILLISECONDS)
 
+        print("errorLogger:  $errorLogger")
         print("response:  $response")
         assertNull(response)
 
-//        Mockito.verify(errorLogger).log(Mockito.any(Message::class.java))
+        verify(errorLogger).log(any())
     }
+
+}
+
+@Configuration
+class MockingBeans {
+
+    @Bean
+    @Primary
+    fun mockerdErrorLogger() = mock(ErrorLogger::class.java)
 }
