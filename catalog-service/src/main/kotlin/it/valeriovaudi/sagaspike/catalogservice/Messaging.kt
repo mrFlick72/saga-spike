@@ -7,6 +7,7 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
+import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageBuilder
 import reactor.core.publisher.Flux
 
@@ -57,3 +58,12 @@ class GetPriceListener(private val findGoodsInCatalog: FindGoodsInCatalog) {
 }
 
 data class GoodsWithPriceMessageRequest(val catalogId: String, val barcode: String)
+
+class ExecutionIdPropagatorChannelInterceptor : ChannelInterceptor {
+
+    override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
+        return MessageBuilder.fromMessage(message)
+                .setHeaderIfAbsent("execution-id", message.headers.getOrDefault("execution-id", ""))
+                .build()
+    }
+}

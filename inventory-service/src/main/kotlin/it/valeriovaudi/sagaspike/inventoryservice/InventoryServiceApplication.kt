@@ -5,6 +5,7 @@ import org.springframework.boot.runApplication
 import org.springframework.cloud.stream.annotation.EnableBinding
 import org.springframework.context.annotation.Bean
 import org.springframework.integration.config.EnableIntegration
+import org.springframework.integration.config.GlobalChannelInterceptor
 
 
 @EnableIntegration
@@ -20,6 +21,10 @@ class InventoryServiceApplication {
 
     @Bean
     fun errorLogger() = ErrorLogger()
+
+    @Bean
+    @GlobalChannelInterceptor
+    fun executionIdPropagatorChannelInterceptor() = ExecutionIdPropagatorChannelInterceptor()
 }
 
 fun main(args: Array<String>) {

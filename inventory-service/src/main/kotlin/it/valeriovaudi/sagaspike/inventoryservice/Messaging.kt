@@ -6,13 +6,11 @@ import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Configuration
 import org.springframework.integration.annotation.ServiceActivator
-import org.springframework.integration.config.GlobalChannelInterceptor
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageBuilder
-import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -106,8 +104,7 @@ open class ErrorLogger {
     }
 }
 
-@Component
-@GlobalChannelInterceptor
+
 class ExecutionIdPropagatorChannelInterceptor : ChannelInterceptor {
 
     override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {
