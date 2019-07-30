@@ -18,6 +18,8 @@ class InventoryServiceApplication {
     @Bean
     fun reserveGoodsListener(reserveGoods: ReserveGoods) = ReserveGoodsListener(reserveGoods)
 
+    @Bean
+    fun errorLogger() = ErrorLogger()
 }
 
 fun main(args: Array<String>) {

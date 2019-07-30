@@ -10,7 +10,6 @@ import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.support.MessageBuilder
-import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -98,7 +97,6 @@ class ErrorHandling(private val errorLogger: ErrorLogger) {
 
 }
 
-@Component
 class ErrorLogger {
 
     fun log(message: Message<*>) {
