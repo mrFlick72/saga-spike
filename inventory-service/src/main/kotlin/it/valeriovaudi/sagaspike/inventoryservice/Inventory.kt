@@ -7,6 +7,8 @@ import reactor.core.publisher.Mono
 
 data class Goods(@Id val barcode: String, val name: String, val availability: Int)
 
+data class NotAvailableGoods(var barcode: String, var quantity: Int, var errorMessage: String)
+
 class NoGoodsAvailabilityException(message: String) : RuntimeException(message)
 
 @Transactional(readOnly = true)

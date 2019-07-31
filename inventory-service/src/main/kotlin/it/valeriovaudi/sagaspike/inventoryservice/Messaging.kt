@@ -23,6 +23,8 @@ interface InventoryMessageChannel {
     @Output
     fun reserveGoodsResponseChannel(): MessageChannel
 
+    @Output
+    fun reserveGoodsErrorChannel(): MessageChannel
 
     @Input
     fun unReserveGoodsRequestChannel(): SubscribableChannel
@@ -37,14 +39,13 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
     @StreamListener
     fun handleGoodsReservation(@Input("reserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
                                @Output("reserveGoodsResponseChannel") output: FluxSender,
-                               @Output("reserveGoodsRequestChannel.reserveGoodsRequest.errors") error: FluxSender) {
+                               @Output("reserveGoodsErrorChannel") error: FluxSender) {
         output.send(input.flatMap { message ->
             message.payload.let {
                 reserveGoods.execute(it.barcode, it.quantity)
+                        .map(sendSuccessfulMessage(message))
+                        .onErrorResume(sendErrorMessage(error, message))
             }
-                    .map(sendSuccessfulMessage(message))
-                    .onErrorResume(sendErrorMessage(error, message))
-
         })
     }
 
@@ -55,25 +56,28 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
         output.send(input.flatMap { message ->
             message.payload.let {
                 reserveGoods.undo(it.barcode, it.quantity)
+                        .map(sendSuccessfulMessage(message))
             }
-                    .map(sendSuccessfulMessage(message))
         })
     }
 
     private fun sendSuccessfulMessage(message: Message<ReserveGoodsQuantity>): (Goods) -> Message<ReservedGoodsQuantity> {
         return {
             MessageBuilder.withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity))
-//                    .setHeaderIfAbsent("execution-id", message.headers.getOrDefault("execution-id", ""))
                     .build()
         }
     }
 
-    private fun sendErrorMessage(error: FluxSender,
-                                 message: Message<ReserveGoodsQuantity>): (Throwable) -> Mono<Message<ReservedGoodsQuantity>> {
+    private fun sendErrorMessage(error: FluxSender, message: Message<ReserveGoodsQuantity>): (Throwable) -> Mono<Message<ReservedGoodsQuantity>> {
         return { e ->
-            error.send(Flux.just(MessageBuilder.withPayload(e)
-//                    .setHeaderIfAbsent("execution-id", message.headers.getOrDefault("execution-id", ""))
-                    .build()))
+            error.send(
+                    message.payload.let {
+                        Flux.just(NotAvailableGoods(
+                                barcode = it.barcode,
+                                quantity = it.quantity,
+                                errorMessage = e.message ?: ""))
+                    }
+            )
                     .then(Mono.empty())
         }
     }

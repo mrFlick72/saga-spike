@@ -2,18 +2,14 @@ package it.valeriovaudi.sagaspike.inventoryservice
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.core.Is
-import org.junit.Assert.*
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThat
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.cloud.stream.test.binder.MessageCollector
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Primary
 import org.springframework.messaging.support.MessageBuilder
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.junit4.SpringRunner
@@ -35,10 +31,6 @@ class ReserveGoodsListenerTest {
 
     @Autowired
     lateinit var inventoryRepository: InventoryRepository
-
-    @Autowired
-    lateinit var errorLogger: ErrorLogger
-
 
     val goods = Goods("barcode", "A_GOODS_NAME", availability = 10)
     val reservedGoodsQuantity = ReservedGoodsQuantity("barcode", quantity = 5)
@@ -67,22 +59,14 @@ class ReserveGoodsListenerTest {
 
         inventoryMessageChannel.reserveGoodsRequestChannel().send(message)
 
-        val response = messageCollector.forChannel(inventoryMessageChannel.reserveGoodsResponseChannel())
+        val response = messageCollector.forChannel(inventoryMessageChannel.reserveGoodsErrorChannel())
                 .poll(1000, TimeUnit.MILLISECONDS)
 
-        print("errorLogger:  $errorLogger")
-        print("response:  $response")
-        assertNull(response)
 
-        verify(errorLogger).log(any())
+        val notAvailableGoods = NotAvailableGoods("barcode", 15, "The Goods barcode availability is not enough")
+        print("response:  $response")
+        assertNotNull(response)
+        assertThat(response.payload as String, Is.`is`(objectMapper.writeValueAsString(notAvailableGoods)))
     }
 
-}
-
-@Configuration
-class MockingBeans {
-
-    @Bean
-    @Primary
-    fun mockedErrorLogger() = mock(ErrorLogger::class.java)
 }
