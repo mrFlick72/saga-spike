@@ -24,25 +24,6 @@ interface CatalogMessageChannel {
 
 class GetPriceListener(private val findGoodsInCatalog: FindGoodsInCatalog) {
 
-//    blocking version
-
-    /*@StreamListener("goodsPricingRequestChannel")
-    @SendTo("goodsPricingResponseChannel")
-    fun handleGoodsPriceRequest(message: Message<GoodsWithPriceMessageRequest>): Message<GoodsWithPrice>? {
-
-        println("handleGoodsPriceRequest invoked")
-        println("message $message")
-
-        return catalogRepository.findAll()
-                .log()
-                .filter { it.id == message.payload.catalogId }
-                .flatMapIterable { it.goods }
-                .filter { it.goods.barcode == message.payload.barcode }
-                .map { withPayload(it).build() }
-                .toMono()
-                .block()
-    }*/
-
     @StreamListener
     fun handleGoodsPriceRequest(@Input("goodsPricingRequestChannel") input: Flux<Message<GoodsWithPriceMessageRequest>>,
                                 @Output("goodsPricingResponseChannel") output: FluxSender) {
