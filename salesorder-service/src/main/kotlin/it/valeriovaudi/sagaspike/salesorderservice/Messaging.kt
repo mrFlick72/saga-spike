@@ -4,15 +4,21 @@ import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.cloud.stream.reactive.FluxSender
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.integration.dsl.IntegrationFlows
+import org.springframework.integration.dsl.MessageChannels
+import org.springframework.integration.handler.ServiceActivatingHandler
 import org.springframework.messaging.Message
-import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
-import org.springframework.messaging.support.MessageBuilder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
+import java.util.*
 
-data class CreateSalesOrderRequest(var salesOrderId: String, var customer: Customer, var goods: List<GoodsRequest>)
+data class CreateSalesOrderRequest(var salesOrderId: String? = null, var customer: Customer, var goods: List<GoodsRequest> = emptyList()) {
+    constructor() : this(UUID.randomUUID().toString(), Customer("", ""), emptyList())
+}
 
 data class GoodsRequest(var salesOrderId: String? = null, var barcode: String, var quantity: Int) {
     constructor() : this(barcode = "", quantity = 0)
@@ -23,10 +29,29 @@ interface SalesOrderMessageChannel {
     @Input
     fun createSalesOrderRequestChannel(): SubscribableChannel
 
-    @Output
-    fun createSalesOrderResponseChannel(): MessageChannel
 }
 
+@Configuration
+class CreateSalesOrderUseCaseConfig {
+
+    @Bean
+    fun applyGoods() = MessageChannels.direct().get()
+
+    @Output
+    fun createSalesOrderResponseChannel() = MessageChannels.flux()
+
+    @Bean
+    fun createSalesOrderUseCase() =
+            IntegrationFlows.from("createSalesOrderResponseChannel")
+                    .split()
+                    .aggregate()
+                    .handle({ message ->
+                        println("aggregation $message");
+                    })
+                    .get()
+
+
+}
 
 class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepository) {
 
@@ -39,13 +64,11 @@ class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepos
                         salesOrderRepository.save(SalesOrder(id = payload.salesOrderId, customer = payload.customer))
                                 .flatMap { salesOrder ->
                                     payload.goods.mapIndexed { index, goods ->
-                                        MessageBuilder.withPayload(
-                                                newGoodsRequest(salesOrder, goods)
-                                        ).copyHeadersIfAbsent(headers(index, payload.goods.size)).build()
+                                        newGoodsRequest(salesOrder, goods)
                                     }.toMono()
                                 }
                     }
-                }.flatMap { Flux.fromIterable(it) }
+                }
         )
     }
 
