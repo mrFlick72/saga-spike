@@ -1,6 +1,5 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.core.Is
 import org.junit.Assert.assertThat
@@ -9,13 +8,12 @@ import org.junit.runner.RunWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.cloud.stream.test.binder.MessageCollector
+import org.springframework.integration.channel.FluxMessageChannel
 import org.springframework.messaging.support.MessageBuilder.withPayload
 import org.springframework.test.context.junit4.SpringRunner
+import reactor.core.publisher.toFlux
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.TimeUnit
-
-/*
 
 @SpringBootTest
 @RunWith(SpringRunner::class)
@@ -23,6 +21,9 @@ class CreateSalesOrderListenerTest {
 
     @Autowired
     lateinit var messageCollector: MessageCollector
+
+    @Autowired
+    lateinit var createSalesOrderResponseChannel: FluxMessageChannel
 
     @Autowired
     lateinit var salesOrderMessageChannel: SalesOrderMessageChannel
@@ -53,10 +54,6 @@ class CreateSalesOrderListenerTest {
     }
 
     fun extractGoodsRequest(): List<GoodsRequest> {
-        val payload = messageCollector.forChannel(salesOrderMessageChannel.createSalesOrderResponseChannel())
-                .poll(1000, TimeUnit.MILLISECONDS)
-                .payload as String
-        println(payload)
-        return objectMapper.readValue(payload, object : TypeReference<List<GoodsRequest>>() {} )
+        return createSalesOrderResponseChannel.toFlux().blockFirst()!!.payload as List<GoodsRequest>
     }
-}*/
+}

@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
-import org.springframework.integration.handler.ServiceActivatingHandler
 import org.springframework.messaging.Message
 import org.springframework.messaging.SubscribableChannel
 import reactor.core.publisher.Flux
@@ -37,8 +36,8 @@ class CreateSalesOrderUseCaseConfig {
     @Bean
     fun applyGoods() = MessageChannels.direct().get()
 
-    @Output
-    fun createSalesOrderResponseChannel() = MessageChannels.flux()
+    @Bean
+    fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
 
     @Bean
     fun createSalesOrderUseCase() =
