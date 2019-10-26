@@ -16,7 +16,6 @@ import reactor.core.publisher.toMono
 
 data class CreateSalesOrderRequest(var salesOrderId: String, var customer: Customer, var goods: List<GoodsRequest>)
 
-@JsonIgnoreProperties
 data class GoodsRequest(var salesOrderId: String? = null, var barcode: String, var quantity: Int) {
     constructor() : this(barcode = "", quantity = 0)
 }
