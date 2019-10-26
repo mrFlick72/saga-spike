@@ -1,7 +1,5 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -40,16 +38,22 @@ class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepos
                     message.payload.let { payload ->
                         salesOrderRepository.save(SalesOrder(id = payload.salesOrderId, customer = payload.customer))
                                 .flatMap { salesOrder ->
-                                    payload.goods.map { goods ->
+                                    payload.goods.mapIndexed { index, goods ->
                                         MessageBuilder.withPayload(
-                                                GoodsRequest(salesOrderId = salesOrder.id, barcode = goods.barcode, quantity = goods.quantity)
-                                        ).build()
+                                                newGoodsRequest(salesOrder, goods)
+                                        ).copyHeadersIfAbsent(headers(index, payload.goods.size)).build()
                                     }.toMono()
                                 }
                     }
                 }.flatMap { Flux.fromIterable(it) }
         )
     }
+
+    private fun newGoodsRequest(salesOrder: SalesOrder, goods: GoodsRequest): GoodsRequest {
+        return GoodsRequest(salesOrderId = salesOrder.id, barcode = goods.barcode, quantity = goods.quantity)
+    }
+
+    private fun headers(index: Int, size: Int) = mapOf("message-sequence.index" to index, "message-sequence.sze" to size)
 
     fun undo(salesOrder: SalesOrder) = Mono.just(TODO())
 }
