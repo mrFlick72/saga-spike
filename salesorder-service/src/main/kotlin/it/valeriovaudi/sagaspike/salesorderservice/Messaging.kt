@@ -6,8 +6,11 @@ import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.integration.dsl.*
-import org.springframework.integration.handler.BridgeHandler
+import org.springframework.data.redis.connection.RedisConnectionFactory
+import org.springframework.integration.dsl.EnricherSpec
+import org.springframework.integration.dsl.IntegrationFlows
+import org.springframework.integration.dsl.MessageChannels
+import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
@@ -61,6 +64,10 @@ class CreateSalesOrderUseCaseConfig {
     fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
 
     @Bean
+    fun redisMessageStore(redisConnectionFactory: RedisConnectionFactory) =
+            RedisMessageStore(redisConnectionFactory)
+
+    @Bean
     fun createSalesOrderUseCaseSplittator(catalogMessageChannel: CatalogMessageChannel) =
             IntegrationFlows.from("createSalesOrderResponseChannel")
                     .split()
@@ -72,12 +79,12 @@ class CreateSalesOrderUseCaseConfig {
                     .get()
 
     @Bean
-    fun createSalesOrderUseCaseAggregator(catalogMessageChannel: CatalogMessageChannel) =
+    fun createSalesOrderUseCaseAggregator(catalogMessageChannel: CatalogMessageChannel, redisMessageStore : RedisMessageStore) =
             IntegrationFlows.from("goodsPricingResponseChannelAdapter")
-                    .aggregate()
-                    .handle({ message ->
+                    .aggregate {aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore)}
+                    .handle { message ->
                         println("aggregation $message")
-                    })
+                    }
                     .get()
 
 

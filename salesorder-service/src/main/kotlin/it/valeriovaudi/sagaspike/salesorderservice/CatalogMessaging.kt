@@ -33,7 +33,6 @@ class CatalogMessagingListeners {
                                            @Output("goodsPricingResponseChannelAdapter") output: FluxSender) {
         output.send(input.flatMap { message ->
             println("goodsPricingResponseChannelAdapter $message");
-            val headers = message.headers
             MessageBuilder.withPayload(CatalogGoodsWithPrice(message.payload.goods, message.payload.price))
                     .copyHeaders(copyHeaders(message.headers))
                     .build()
