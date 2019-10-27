@@ -8,7 +8,7 @@ import org.springframework.integration.config.EnableIntegration
 
 @EnableIntegration
 @SpringBootApplication
-@EnableBinding(SalesOrderMessageChannel::class)
+@EnableBinding(SalesOrderMessageChannel::class, CatalogMessageChannel::class, InventoryMessageChannel::class)
 class SalesorderServiceApplication {
 
     @Bean

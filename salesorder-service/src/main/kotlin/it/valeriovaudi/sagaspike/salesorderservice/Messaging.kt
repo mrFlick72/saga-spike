@@ -6,9 +6,10 @@ import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.integration.dsl.IntegrationFlows
-import org.springframework.integration.dsl.MessageChannels
+import org.springframework.integration.dsl.*
+import org.springframework.integration.handler.BridgeHandler
 import org.springframework.messaging.Message
+import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -30,22 +31,52 @@ interface SalesOrderMessageChannel {
 
 }
 
+interface InventoryMessageChannel {
+
+    @Output
+    fun reserveGoodsRequestChannel(): MessageChannel
+
+    @Input
+    fun reserveGoodsResponseChannel(): SubscribableChannel
+
+    @Input
+    fun reserveGoodsErrorChannel(): SubscribableChannel
+
+    @Output
+    fun unReserveGoodsRequestChannel(): MessageChannel
+
+    @Input
+    fun unReserveGoodsResponseChannel(): SubscribableChannel
+
+}
+
+
 @Configuration
 class CreateSalesOrderUseCaseConfig {
 
     @Bean
-    fun applyGoods() = MessageChannels.direct().get()
+    fun goodsPricingResponseChannelAdapter() = MessageChannels.flux().get()
 
     @Bean
     fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
 
     @Bean
-    fun createSalesOrderUseCase() =
+    fun createSalesOrderUseCaseSplittator(catalogMessageChannel: CatalogMessageChannel) =
             IntegrationFlows.from("createSalesOrderResponseChannel")
                     .split()
+                    .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
+                    .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "payload.salesOrderId") }
+                    .transform { source: GoodsRequest -> CatalogGoodsWithPriceMessageRequest("CATALOG01", source.barcode) }
+                    .log()
+                    .channel(catalogMessageChannel.goodsPricingRequestChannel())
+                    .get()
+
+    @Bean
+    fun createSalesOrderUseCaseAggregator(catalogMessageChannel: CatalogMessageChannel) =
+            IntegrationFlows.from("goodsPricingResponseChannelAdapter")
                     .aggregate()
                     .handle({ message ->
-                        println("aggregation $message");
+                        println("aggregation $message")
                     })
                     .get()
 

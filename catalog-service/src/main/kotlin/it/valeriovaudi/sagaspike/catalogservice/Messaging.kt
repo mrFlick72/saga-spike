@@ -30,15 +30,22 @@ class GetPriceListener(private val findGoodsInCatalog: FindGoodsInCatalog) {
 
         output.send(
                 input.flatMap { message ->
+                    println(message)
                     message.payload.let { findGoodsInCatalog.findFor(it.catalogId, it.barcode) }
-                            .map<Message<GoodsWithPrice>> { goodsWithPrice -> MessageBuilder.withPayload(goodsWithPrice).build() }
+                            .map<Message<GoodsWithPrice>> { goodsWithPrice ->
+                                MessageBuilder.withPayload(goodsWithPrice)
+                                        .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                                        .build()
+                            }
 
                 })
     }
 
 }
 
-data class GoodsWithPriceMessageRequest(val catalogId: String, val barcode: String)
+data class GoodsWithPriceMessageRequest(val catalogId: String, val barcode: String) {
+    constructor() : this("", "")
+}
 
 class ExecutionIdPropagatorChannelInterceptor : ChannelInterceptor {
 

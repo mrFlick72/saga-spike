@@ -1,0 +1,9 @@
+spring:
+  cloud:
+    stream:
+      bindings:
+        goodsPricingRequestChannel:
+          group: goodsPricingRequest
+
+        goodsPricingResponseChannel:
+          group: goodsPricingResponse

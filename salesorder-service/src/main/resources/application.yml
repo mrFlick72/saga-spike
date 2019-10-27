@@ -1,0 +1,25 @@
+server:
+  port: 8081
+
+
+spring:
+  cloud:
+    stream:
+      bindings:
+        goodsPricingRequestChannel:
+          group: goodsPricingRequest
+
+        goodsPricingResponseChannel:
+          group: goodsPricingResponse
+
+        reserveGoodsRequestChannel:
+          group: reserveGoodsRequest
+
+        reserveGoodsResponseChannel:
+          group: reserveGoodsResponse
+
+        unReserveGoodsRequestChannel:
+          group: reserveGoodsRequest
+
+        unReserveGoodsResponseChannel:
+          group: reserveGoodsResponse
