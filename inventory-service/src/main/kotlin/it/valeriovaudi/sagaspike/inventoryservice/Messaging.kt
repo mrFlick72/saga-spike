@@ -64,6 +64,7 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
 
     private fun sendSuccessfulMessage(message: Message<ReserveGoodsQuantity>): (Goods) -> Message<ReservedGoodsQuantity> {
         return {
+            println("sendSuccessfulMessage $it")
             MessageBuilder.withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity))
                     .copyHeaders(MessageUtils.copyHeaders(message.headers))
                     .build()
@@ -74,6 +75,7 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
         return { e ->
             error.send(
                     message.payload.let {
+                        println("sendErrorMessage")
                         Flux.just(NotAvailableGoods(
                                 barcode = it.barcode,
                                 quantity = it.quantity,

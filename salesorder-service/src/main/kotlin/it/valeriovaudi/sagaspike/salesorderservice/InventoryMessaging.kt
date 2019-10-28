@@ -38,13 +38,14 @@ class InventoryMessagingListeners {
                                    @Output("responseChannelAdapter") output: FluxSender) {
         output.send(
                 input.flatMap { message ->
+                    println("reserveGoodsStreamListener $message");
+
                     val goods = Goods(id = UUID.randomUUID().toString(),
                             salesOrderId = message.headers["sales-order-id"] as String,
                             quantity = message.payload.quantity,
                             barcode = message.payload.barcode,
                             name = message.headers["goods-name"] as String,
                             price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
-                    println("reserveGoodsStreamListener $goods");
 
                     MessageBuilder.withPayload(goods)
                             .copyHeaders(MessageUtils.copyHeaders(message.headers))
