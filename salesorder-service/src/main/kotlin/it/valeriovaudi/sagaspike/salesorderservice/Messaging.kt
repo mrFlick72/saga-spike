@@ -65,9 +65,14 @@ class CreateSalesOrderUseCaseConfig {
                                           redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from("responseChannelAdapter")
                     .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
-                    .toReactivePublisher<List<Goods>>()
-                    .toFlux()
-                    .flatMap { msg: Message<List<Goods>> -> goodsRepository.saveAll(msg.payload) }
+                    .handle { goods: List<Goods> ->
+
+                        println("save ")
+                        goodsRepository.saveAll(goods)
+                                .then()
+                                .subscribe { println(it) }
+
+                    }
 }
 
 class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepository) {
