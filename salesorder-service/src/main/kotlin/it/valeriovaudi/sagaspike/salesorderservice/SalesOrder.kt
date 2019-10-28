@@ -24,12 +24,5 @@ data class Customer(var firstName: String, var lastName: String) {
 }
 
 interface SalesOrderRepository : ReactiveMongoRepository<SalesOrder, String>
+
 interface GoodsRepository : ReactiveMongoRepository<Goods, String>
-
-
-class AddGoodsToSalesOrder() {
-
-    fun execute(salesOrderId: String, barcode: String, quantity: Int) = Mono.just(TODO())
-
-    fun undo(salesOrderId: String, barcode: String, quantity: Int) = Mono.just(TODO())
-}

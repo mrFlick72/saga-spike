@@ -42,6 +42,7 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
                                @Output("reserveGoodsErrorChannel") error: FluxSender) {
         output.send(input.flatMap { message ->
             message.payload.let {
+                println(it)
                 reserveGoods.execute(it.barcode, it.quantity)
                         .map(sendSuccessfulMessage(message))
                         .onErrorResume(sendErrorMessage(error, message))

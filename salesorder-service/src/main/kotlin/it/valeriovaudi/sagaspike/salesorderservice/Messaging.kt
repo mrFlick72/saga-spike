@@ -66,12 +66,10 @@ class CreateSalesOrderUseCaseConfig {
             IntegrationFlows.from("responseChannelAdapter")
                     .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
                     .handle { goods: List<Goods> ->
-
-                        println("save ")
-                        goodsRepository.saveAll(goods)
-                                .then()
-                                .subscribe { println(it) }
-
+                        println("aggregation $goods")
+                        /*              goodsRepository.saveAll(goods)
+                                              .then()
+                                              .subscribe { println(it) }*/
                     }
 }
 

@@ -16,12 +16,6 @@ spring:
 
         reserveGoodsResponseChannel:
           group: reserveGoodsResponse
-
-        unReserveGoodsRequestChannel:
-          group: reserveGoodsRequest
-
-        unReserveGoodsResponseChannel:
-          group: reserveGoodsResponse
   data:
     mongodb:
       database: sales-order

@@ -11,6 +11,7 @@ import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.support.MessageBuilder
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
+import reactor.core.publisher.toFlux
 import reactor.core.publisher.toMono
 import java.io.Serializable
 import java.math.BigDecimal
@@ -32,18 +33,21 @@ class CatalogMessagingListeners {
     @StreamListener
     fun goodsPricingStreamListener(@Input("goodsPricingResponseChannel") input: Flux<Message<CatalogGoodsWithPrice>>,
                                    @Output("reserveGoodsRequestChannel") output: FluxSender) {
-        output.send(input.flatMap { message ->
-            println("goodsPricingStreamListener $message");
-            MessageBuilder.withPayload(InventoryReserveGoodsQuantity(message.payload.goods.barcode, message.headers["goods-quantity"] as Int))
-                    .copyHeaders(mapOf(
-                            "goods-name" to message.payload.goods.name,
-                            "goods-price" to message.payload.price.price.toString(),
-                            "currency" to message.payload.price.currency)
-                    )
-                    .copyHeaders(copyHeaders(message.headers))
-                    .build()
-                    .toMono()
-        })
+        output.send(
+                input.flatMap { message ->
+                    val payload = InventoryReserveGoodsQuantity(message.payload.goods.barcode, message.headers["goods-quantity"] as Int)
+                    println("goodsPricingStreamListener $payload");
+
+                    MessageBuilder.withPayload(payload)
+                            .copyHeaders(mapOf(
+                                    "goods-name" to message.payload.goods.name,
+                                    "goods-price" to message.payload.price.price.toString(),
+                                    "currency" to message.payload.price.currency)
+                            )
+                            .copyHeaders(copyHeaders(message.headers))
+                            .build()
+                            .toMono()
+                })
     }
 }
 

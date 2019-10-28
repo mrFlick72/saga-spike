@@ -9,7 +9,7 @@ spring:
           group: reserveGoodsResponse
 
         unReserveGoodsRequestChannel:
-          group: reserveGoodsRequest
+          group: unReserveGoodsRequest
 
         unReserveGoodsResponseChannel:
-          group: reserveGoodsResponse
+          group: unReserveGoodsResponse
