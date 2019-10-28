@@ -12,10 +12,11 @@ import org.springframework.messaging.support.MessageBuilder
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.toMono
+import java.io.Serializable
 import java.math.BigDecimal
 
 
-data class CatalogGoodsWithPriceMessageRequest(val catalogId: String, val barcode: String)
+data class CatalogGoodsWithPriceMessageRequest(val catalogId: String, val barcode: String) : Serializable
 
 interface CatalogMessageChannel {
 
@@ -29,11 +30,16 @@ interface CatalogMessageChannel {
 @Component
 class CatalogMessagingListeners {
     @StreamListener
-    fun goodsPricingResponseChannelAdapter(@Input("goodsPricingResponseChannel") input: Flux<Message<CatalogGoodsWithPrice>>,
-                                           @Output("goodsPricingResponseChannelAdapter") output: FluxSender) {
+    fun goodsPricingStreamListener(@Input("goodsPricingResponseChannel") input: Flux<Message<CatalogGoodsWithPrice>>,
+                                   @Output("reserveGoodsRequestChannel") output: FluxSender) {
         output.send(input.flatMap { message ->
-            println("goodsPricingResponseChannelAdapter $message");
-            MessageBuilder.withPayload(CatalogGoodsWithPrice(message.payload.goods, message.payload.price))
+            println("goodsPricingStreamListener $message");
+            MessageBuilder.withPayload(InventoryReserveGoodsQuantity(message.payload.goods.barcode, message.headers["goods-quantity"] as Int))
+                    .copyHeaders(mapOf(
+                            "goods-name" to message.payload.goods.name,
+                            "goods-price" to message.payload.price.price.toString(),
+                            "currency" to message.payload.price.currency)
+                    )
                     .copyHeaders(copyHeaders(message.headers))
                     .build()
                     .toMono()
@@ -41,8 +47,8 @@ class CatalogMessagingListeners {
     }
 }
 
-data class CatalogGoods(var barcode: String, var name: String)
+data class CatalogGoods(var barcode: String, var name: String) : Serializable
 
-data class CatalogPrice(var price: BigDecimal, var currency: String)
+data class CatalogPrice(var price: BigDecimal, var currency: String) : Serializable
 
-data class CatalogGoodsWithPrice(var goods: CatalogGoods, var price: CatalogPrice)
+data class CatalogGoodsWithPrice(var goods: CatalogGoods, var price: CatalogPrice) : Serializable

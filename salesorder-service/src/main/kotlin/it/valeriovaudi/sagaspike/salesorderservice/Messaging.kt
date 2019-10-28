@@ -12,11 +12,12 @@ import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.messaging.Message
-import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.toFlux
 import reactor.core.publisher.toMono
+import java.math.BigDecimal
 import java.util.*
 
 data class CreateSalesOrderRequest(var salesOrderId: String? = null, var customer: Customer, var goods: List<GoodsRequest> = emptyList()) {
@@ -34,31 +35,11 @@ interface SalesOrderMessageChannel {
 
 }
 
-interface InventoryMessageChannel {
-
-    @Output
-    fun reserveGoodsRequestChannel(): MessageChannel
-
-    @Input
-    fun reserveGoodsResponseChannel(): SubscribableChannel
-
-    @Input
-    fun reserveGoodsErrorChannel(): SubscribableChannel
-
-    @Output
-    fun unReserveGoodsRequestChannel(): MessageChannel
-
-    @Input
-    fun unReserveGoodsResponseChannel(): SubscribableChannel
-
-}
-
-
 @Configuration
 class CreateSalesOrderUseCaseConfig {
 
     @Bean
-    fun goodsPricingResponseChannelAdapter() = MessageChannels.flux().get()
+    fun responseChannelAdapter() = MessageChannels.flux().get()
 
     @Bean
     fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
@@ -79,15 +60,14 @@ class CreateSalesOrderUseCaseConfig {
                     .get()
 
     @Bean
-    fun createSalesOrderUseCaseAggregator(catalogMessageChannel: CatalogMessageChannel, redisMessageStore : RedisMessageStore) =
-            IntegrationFlows.from("goodsPricingResponseChannelAdapter")
-                    .aggregate {aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore)}
-                    .handle { message ->
-                        println("aggregation $message")
-                    }
-                    .get()
-
-
+    fun createSalesOrderUseCaseAggregator(goodsRepository: GoodsRepository,
+                                          catalogMessageChannel: CatalogMessageChannel,
+                                          redisMessageStore: RedisMessageStore) =
+            IntegrationFlows.from("responseChannelAdapter")
+                    .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
+                    .toReactivePublisher<List<Goods>>()
+                    .toFlux()
+                    .flatMap { msg: Message<List<Goods>> -> goodsRepository.saveAll(msg.payload) }
 }
 
 class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepository) {

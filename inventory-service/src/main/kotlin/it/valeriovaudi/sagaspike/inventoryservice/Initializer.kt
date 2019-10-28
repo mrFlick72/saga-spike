@@ -9,10 +9,10 @@ class Initializer(private val inventoryRepository: InventoryRepository) : Applic
     override fun run(args: ApplicationArguments) {
         println("INIT")
         val goodsList = listOf(
-                Goods("A_BARCODE_1", "A_GOODS_1", 10),
-                Goods("A_BARCODE_2", "A_GOODS_2", 10),
-                Goods("A_BARCODE_3", "A_GOODS_3", 10),
-                Goods("A_BARCODE_4", "A_GOODS_4", 10)
+                Goods("A_BARCODE_1", "A_GOODS_1", 50),
+                Goods("A_BARCODE_2", "A_GOODS_2", 50),
+                Goods("A_BARCODE_3", "A_GOODS_3", 50),
+                Goods("A_BARCODE_4", "A_GOODS_4", 50)
         )
         inventoryRepository.deleteAll()
                 .thenMany(inventoryRepository.saveAll(goodsList))

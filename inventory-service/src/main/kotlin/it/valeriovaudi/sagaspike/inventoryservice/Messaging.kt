@@ -64,6 +64,7 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
     private fun sendSuccessfulMessage(message: Message<ReserveGoodsQuantity>): (Goods) -> Message<ReservedGoodsQuantity> {
         return {
             MessageBuilder.withPayload(ReservedGoodsQuantity(message.payload.barcode, message.payload.quantity))
+                    .copyHeaders(MessageUtils.copyHeaders(message.headers))
                     .build()
         }
     }

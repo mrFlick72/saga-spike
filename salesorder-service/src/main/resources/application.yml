@@ -1,7 +1,6 @@
 server:
   port: 8081
 
-
 spring:
   cloud:
     stream:
@@ -23,3 +22,6 @@ spring:
 
         unReserveGoodsResponseChannel:
           group: reserveGoodsResponse
+  data:
+    mongodb:
+      database: sales-order
