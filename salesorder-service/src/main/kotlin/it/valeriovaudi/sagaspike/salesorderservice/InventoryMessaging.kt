@@ -43,7 +43,7 @@ class InventoryMessagingListeners {
 
     @SendTo("responseChannelAdapter")
     @StreamListener("reserveGoodsResponseChannel")
-    fun reserveGoodsStreamListener(message: Message<InventoryReserveGoodsQuantity>) : Message<Goods> {
+    fun reserveGoodsStreamListener(message: Message<InventoryReserveGoodsQuantity>): Message<Goods> {
         println("reserveGoodsStreamListener");
 
         println("reserveGoodsStreamListener $message");
@@ -56,9 +56,9 @@ class InventoryMessagingListeners {
                 price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
 
 
-                return MessageBuilder.withPayload(goods)
-                        .copyHeaders(MessageUtils.copyHeaders(message.headers))
-                        .build()
+        return MessageBuilder.withPayload(goods)
+                .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                .build()
 
     }
 }

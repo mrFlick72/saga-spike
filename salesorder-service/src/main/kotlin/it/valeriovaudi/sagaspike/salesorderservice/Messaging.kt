@@ -7,6 +7,8 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
+import org.springframework.integration.annotation.Gateway
+import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
@@ -18,6 +20,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toFlux
 import reactor.core.publisher.toMono
+import reactor.core.scheduler.Schedulers
 import java.math.BigDecimal
 import java.util.*
 
@@ -40,7 +43,10 @@ interface SalesOrderMessageChannel {
 class CreateSalesOrderUseCaseConfig {
 
     @Bean
-    fun responseChannelAdapter() = MessageChannels.direct()
+    fun salesOrderCompleteChannel() = MessageChannels.flux()
+
+    @Bean
+    fun responseChannelAdapter() = MessageChannels.flux()
 
     @Bean
     fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
@@ -66,7 +72,10 @@ class CreateSalesOrderUseCaseConfig {
             IntegrationFlows.from(responseChannelAdapter())
                     .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
                     .handle { goods: List<Goods> ->
-                        println("aggregation $goods")
+                        goodsRepository.saveAll(goods)
+                                .subscribeOn(Schedulers.elastic())
+                                .subscribe()
+                        Unit
                     }.get()
 }
 
