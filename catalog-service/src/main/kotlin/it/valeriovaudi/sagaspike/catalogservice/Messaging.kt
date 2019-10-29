@@ -7,6 +7,7 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
+import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.messaging.support.MessageBuilder
 import reactor.core.publisher.Flux
@@ -24,22 +25,35 @@ interface CatalogMessageChannel {
 
 class GetPriceListener(private val findGoodsInCatalog: FindGoodsInCatalog) {
 
-    @StreamListener
-    fun handleGoodsPriceRequest(@Input("goodsPricingRequestChannel") input: Flux<Message<GoodsWithPriceMessageRequest>>,
-                                @Output("goodsPricingResponseChannel") output: FluxSender) {
+     @StreamListener
+     fun handleGoodsPriceRequest(@Input("goodsPricingRequestChannel") input: Flux<Message<GoodsWithPriceMessageRequest>>,
+                                 @Output("goodsPricingResponseChannel") output: FluxSender) {
 
-        output.send(
-                input.flatMap { message ->
-                    println(message)
-                    message.payload.let { findGoodsInCatalog.findFor(it.catalogId, it.barcode) }
-                            .map<Message<GoodsWithPrice>> { goodsWithPrice ->
-                                MessageBuilder.withPayload(goodsWithPrice)
-                                        .copyHeaders(MessageUtils.copyHeaders(message.headers))
-                                        .build()
-                            }
+         output.send(
+                 input.flatMap { message ->
+                     println(message)
+                     message.payload.let { findGoodsInCatalog.findFor(it.catalogId, it.barcode) }
+                             .map<Message<GoodsWithPrice>> { goodsWithPrice ->
+                                 println("send a message")
+                                 MessageBuilder.withPayload(goodsWithPrice)
+                                         .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                                         .build()
+                             }
 
-                })
-    }
+                 })
+     }
+
+   /* @StreamListener(target = "goodsPricingRequestChannel")
+    @SendTo("goodsPricingResponseChannel")
+    fun handleGoodsPriceRequest(message: Message<GoodsWithPriceMessageRequest>): Message<GoodsWithPrice> {
+        val payload = message.payload
+        val goodsWithPrice: GoodsWithPrice = findGoodsInCatalog.findFor(payload.catalogId, payload.barcode).block()!!
+        println(goodsWithPrice)
+
+        return MessageBuilder.withPayload(goodsWithPrice)
+                .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                .build()
+    }*/
 
 }
 

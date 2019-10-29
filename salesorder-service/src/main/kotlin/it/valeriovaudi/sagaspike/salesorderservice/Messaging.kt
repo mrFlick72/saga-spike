@@ -12,6 +12,7 @@ import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.messaging.Message
+import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -39,7 +40,7 @@ interface SalesOrderMessageChannel {
 class CreateSalesOrderUseCaseConfig {
 
     @Bean
-    fun responseChannelAdapter() = MessageChannels.flux().get()
+    fun responseChannelAdapter() = MessageChannels.direct()
 
     @Bean
     fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
@@ -55,7 +56,6 @@ class CreateSalesOrderUseCaseConfig {
                     .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
                     .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "payload.salesOrderId") }
                     .transform { source: GoodsRequest -> CatalogGoodsWithPriceMessageRequest("CATALOG01", source.barcode) }
-                    .log()
                     .channel(catalogMessageChannel.goodsPricingRequestChannel())
                     .get()
 
@@ -63,14 +63,11 @@ class CreateSalesOrderUseCaseConfig {
     fun createSalesOrderUseCaseAggregator(goodsRepository: GoodsRepository,
                                           catalogMessageChannel: CatalogMessageChannel,
                                           redisMessageStore: RedisMessageStore) =
-            IntegrationFlows.from("responseChannelAdapter")
+            IntegrationFlows.from(responseChannelAdapter())
                     .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
                     .handle { goods: List<Goods> ->
                         println("aggregation $goods")
-                        /*              goodsRepository.saveAll(goods)
-                                              .then()
-                                              .subscribe { println(it) }*/
-                    }
+                    }.get()
 }
 
 class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepository) {
