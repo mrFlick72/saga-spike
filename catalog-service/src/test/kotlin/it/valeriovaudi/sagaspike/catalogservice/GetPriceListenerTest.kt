@@ -63,7 +63,6 @@ class GetPriceListenerTest {
 
         val response = messageCollector.forChannel(catalogMessageChannel.goodsPricingResponseChannel())
                 .poll(1000, TimeUnit.MILLISECONDS)
-        print("response:  $response")
         assertNotNull(response)
         assertThat(response.payload as String, Is.`is`(objectMapper.writeValueAsString(empty())))
     }
