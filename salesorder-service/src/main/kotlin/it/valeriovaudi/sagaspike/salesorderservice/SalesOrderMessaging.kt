@@ -7,21 +7,16 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
-import org.springframework.integration.annotation.Gateway
-import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.messaging.Message
-import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.toFlux
 import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
-import java.math.BigDecimal
 import java.util.*
 
 data class CreateSalesOrderRequest(var salesOrderId: String? = null, var customer: Customer, var goods: List<GoodsRequest> = emptyList()) {
@@ -49,7 +44,7 @@ class CreateSalesOrderUseCaseConfig {
     fun responseChannelAdapter() = MessageChannels.flux()
 
     @Bean
-    fun createSalesOrderResponseChannel() = MessageChannels.flux().get()
+    fun createSalesOrderResponseChannel() = MessageChannels.flux()
 
     @Bean
     fun redisMessageStore(redisConnectionFactory: RedisConnectionFactory) =

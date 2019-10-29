@@ -5,13 +5,9 @@ import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.cloud.stream.reactive.FluxSender
-import org.springframework.context.annotation.Configuration
-import org.springframework.integration.annotation.InboundChannelAdapter
-import org.springframework.integration.annotation.Poller
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
-import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.support.MessageBuilder
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
@@ -41,24 +37,26 @@ class InventoryMessagingListeners {
     @Autowired
     lateinit var responseChannelAdapter: MessageChannel
 
-    @SendTo("responseChannelAdapter")
-    @StreamListener("reserveGoodsResponseChannel")
-    fun reserveGoodsStreamListener(message: Message<InventoryReserveGoodsQuantity>): Message<Goods> {
-        println("reserveGoodsStreamListener");
+    @StreamListener
+    fun execute(@Input("reserveGoodsResponseChannel") input: Flux<Message<InventoryReserveGoodsQuantity>>,
+                @Output("responseChannelAdapter") output: FluxSender) {
+        output.send(
+                input.flatMap { message ->
+                    println("reserveGoodsStreamListener $message");
 
-        println("reserveGoodsStreamListener $message");
-
-        val goods = Goods(id = UUID.randomUUID().toString(),
-                salesOrderId = message.headers["sales-order-id"] as String,
-                quantity = message.payload.quantity,
-                barcode = message.payload.barcode,
-                name = message.headers["goods-name"] as String,
-                price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
+                    val goods = Goods(id = UUID.randomUUID().toString(),
+                            salesOrderId = message.headers["sales-order-id"] as String,
+                            quantity = message.payload.quantity,
+                            barcode = message.payload.barcode,
+                            name = message.headers["goods-name"] as String,
+                            price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
 
 
-        return MessageBuilder.withPayload(goods)
-                .copyHeaders(MessageUtils.copyHeaders(message.headers))
-                .build()
-
+                    MessageBuilder.withPayload(goods)
+                            .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                            .build().toMono()
+                }
+        )
     }
+
 }
