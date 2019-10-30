@@ -1,10 +1,10 @@
-server:
-  port: 8081
-
 spring:
   cloud:
     stream:
       bindings:
+        createSalesOrderRequestChannel:
+          group: createSalesOrderRequest
+
         goodsPricingRequestChannel:
           group: goodsPricingRequest
 
