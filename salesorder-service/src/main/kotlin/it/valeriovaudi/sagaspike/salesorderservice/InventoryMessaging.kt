@@ -1,6 +1,5 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -20,7 +19,6 @@ data class InventoryReserveGoodsQuantity(var barcode: String, var quantity: Int)
     constructor() : this("", 0)
 }
 
-
 interface InventoryMessageChannel {
 
     @Output
@@ -33,9 +31,6 @@ interface InventoryMessageChannel {
 
 @Component
 class InventoryMessagingListeners {
-
-    @Autowired
-    lateinit var responseChannelAdapter: MessageChannel
 
     @StreamListener
     fun execute(@Input("reserveGoodsResponseChannel") input: Flux<Message<InventoryReserveGoodsQuantity>>,
