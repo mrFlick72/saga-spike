@@ -14,7 +14,7 @@ data class SalesOrderCustomer(@Id var id: String? = null, var firstName: String,
 
 data class Goods(@Id var id: String? = null, var salesOrderId: String, var barcode: String, var name: String, var quantity: Int, var price: Money) : Serializable
 
-data class Money(var price: BigDecimal, var currency: String) : Serializable {
+data class Money(var value: BigDecimal, var currency: String) : Serializable {
     constructor() : this(BigDecimal.ZERO, "")
 
     companion object {
@@ -36,7 +36,14 @@ class GetSalesOrder(private val salesOrderCustomerRepository: SalesOrderCustomer
         return Mono.zip(
                 salesOrderCustomerRepository.findById(salesOrderId),
                 goodsRepository.findAllBySalesOrderId(salesOrderId).collectList(),
-                { customer: SalesOrderCustomer, goods: List<Goods> -> SalesOrder(customer, goods, Money.zero()) })
+                { customer: SalesOrderCustomer, goods: List<Goods> -> SalesOrder(customer, goods, totalFor(goods)) })
 
     }
+
+    private fun totalFor(goods: List<Goods>) =
+            goods.map {item ->
+                Money(item.price.value.multiply(BigDecimal(item.quantity)), item.price.currency)
+            }.reduce { acc, money ->
+                Money(acc.value.add(money.value), acc.currency)
+            }
 }
