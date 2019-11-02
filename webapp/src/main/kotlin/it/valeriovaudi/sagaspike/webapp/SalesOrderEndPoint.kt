@@ -10,6 +10,8 @@ import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
+import reactor.core.publisher.Mono
+import reactor.core.publisher.toMono
 import java.util.*
 
 @RestController
@@ -17,7 +19,7 @@ class SalesOrderEndPoint(private val newSalesOrderGateway: NewSalesOrderGateway)
 
     @PostMapping("/sales-order")
     fun createSaleOrder(@RequestBody createSalesOrderRequest: CreateSalesOrderRequest) =
-            newSalesOrderGateway.newSalesOrder(createSalesOrderRequest)
+            Mono.defer<String> { newSalesOrderGateway.newSalesOrder(createSalesOrderRequest).toMono() }
 }
 
 @MessagingGateway
@@ -36,8 +38,6 @@ class NewSalesOrderPipelineConfig {
     @Bean
     fun newSalesOrderResponseChannel() = MessageChannels.direct()
 
-    @Bean
-    fun newSalesOrderErrorChannel() = MessageChannels.direct()
 
     @Bean
     fun newSalesOrderipeline(salesOrderMessageChannel: SalesOrderMessageChannel) =
