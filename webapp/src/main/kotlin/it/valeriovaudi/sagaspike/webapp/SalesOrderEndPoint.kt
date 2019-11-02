@@ -7,32 +7,36 @@ import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
 import org.springframework.messaging.handler.annotation.Payload
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.reactive.function.BodyInserters
+import org.springframework.web.reactive.function.server.router
 import reactor.core.publisher.Mono
 import java.util.*
 
-@RestController
+@Configuration
 class SalesOrderEndPoint(private val newSalesOrderGateway: NewSalesOrderGateway) {
 
-    @PostMapping("/sales-order")
-    fun createSaleOrder(@RequestBody createSalesOrderRequest: CreateSalesOrderRequest) =
-            Mono.create<String> { sink -> sink.success(newSalesOrderGateway.newSalesOrder(createSalesOrderRequest)) }
+    @Bean
+    fun routes() = router {
+        POST("/sales-order") {
+            it.bodyToMono(CreateSalesOrderRequest::class.java)
+                    .flatMap {newSalesOrderGateway.newSalesOrder(it) }
+                    .flatMap { ok().body(BodyInserters.fromObject(it)) }
+        }
+    }
 }
 
 @MessagingGateway
 interface NewSalesOrderGateway {
 
     @Gateway(requestChannel = "newSalesOrderRequestChannel", replyChannel = "newSalesOrderResponseChannel")
-    fun newSalesOrder(@Payload createSalesOrderRequest: CreateSalesOrderRequest): String
+    fun newSalesOrder(@Payload createSalesOrderRequest: CreateSalesOrderRequest): Mono<String>
 }
 
 @Configuration
 class NewSalesOrderPipelineConfig {
 
     @Bean
-    fun newSalesOrderRequestChannel() = MessageChannels.direct()
+    fun newSalesOrderRequestChannel() = MessageChannels.flux()
 
     @Bean
     fun newSalesOrderResponseChannel() = MessageChannels.direct()
