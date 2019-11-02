@@ -31,7 +31,7 @@ interface NewSalesOrderGateway {
 class NewSalesOrderPipelineConfig {
 
     @Bean
-    fun newSalesOrderRequestChannel() = MessageChannels.publishSubscribe()
+    fun newSalesOrderRequestChannel() = MessageChannels.direct()
 
     @Bean
     fun newSalesOrderResponseChannel() = MessageChannels.direct()
@@ -39,19 +39,19 @@ class NewSalesOrderPipelineConfig {
     @Bean
     fun newSalesOrderErrorChannel() = MessageChannels.direct()
 
-
     @Bean
-    fun newSalesOrderIdEchoPipeline(salesOrderMessageChannel: SalesOrderMessageChannel) =
+    fun newSalesOrderipeline(salesOrderMessageChannel: SalesOrderMessageChannel) =
             IntegrationFlows.from(newSalesOrderRequestChannel())
-                    .transform { source: CreateSalesOrderRequest -> source.salesOrderId }
-                    .channel(newSalesOrderResponseChannel())
-                    .get()
+                    .publishSubscribeChannel { channel ->
+                        channel.subscribe { flow ->
+                            flow.transform("payload.salesOrderId")
+                                    .channel(newSalesOrderResponseChannel())
+                        }
 
-    @Bean
-    fun newSalesOrderSagaProcessingPipeline(salesOrderMessageChannel: SalesOrderMessageChannel) =
-            IntegrationFlows.from(newSalesOrderRequestChannel())
-                    .enrichHeaders(mapOf("execution-id" to UUID.randomUUID().toString()))
-                    .channel(salesOrderMessageChannel.createSalesOrderRequestChannel())
+                        channel.subscribe { flow ->
+                            flow.enrichHeaders(mapOf("execution-id" to UUID.randomUUID().toString()))
+                                    .channel(salesOrderMessageChannel.createSalesOrderRequestChannel())
+                        }
+                    }
                     .get()
-
 }
