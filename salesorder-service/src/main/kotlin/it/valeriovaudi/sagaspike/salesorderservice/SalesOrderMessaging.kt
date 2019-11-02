@@ -7,12 +7,15 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
+import org.springframework.integration.annotation.Gateway
+import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.messaging.Message
 import org.springframework.messaging.SubscribableChannel
+import org.springframework.messaging.handler.annotation.Payload
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
@@ -21,6 +24,9 @@ import java.util.*
 
 data class CreateSalesOrderRequest(var salesOrderId: String? = null, var customer: Customer, var goods: List<GoodsRequest> = emptyList()) {
     constructor() : this(UUID.randomUUID().toString(), Customer("", ""), emptyList())
+}
+data class Customer(var firstName: String, var lastName: String) {
+    constructor() : this("", "")
 }
 
 data class GoodsRequest(var salesOrderId: String? = null, var barcode: String, var quantity: Int) {
@@ -74,7 +80,7 @@ class CreateSalesOrderUseCaseConfig {
                     }.get()
 }
 
-class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepository) {
+class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOrderCustomerRepository) {
 
     @StreamListener
     fun execute(@Input("createSalesOrderRequestChannel") input: Flux<Message<CreateSalesOrderRequest>>,
@@ -82,7 +88,7 @@ class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepos
         output.send(
                 input.flatMap { message ->
                     message.payload.let { payload ->
-                        salesOrderRepository.save(SalesOrder(id = payload.salesOrderId, customer = payload.customer))
+                        salesOrderCustomerRepository.save(SalesOrderCustomer(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName))
                                 .flatMap { salesOrder ->
                                     payload.goods.mapIndexed { index, goods ->
                                         newGoodsRequest(salesOrder, goods)
@@ -93,13 +99,46 @@ class CreateSalesOrderListener(private val salesOrderRepository: SalesOrderRepos
         )
     }
 
-    private fun newGoodsRequest(salesOrder: SalesOrder, goods: GoodsRequest): GoodsRequest {
-        return GoodsRequest(salesOrderId = salesOrder.id, barcode = goods.barcode, quantity = goods.quantity)
+    private fun newGoodsRequest(salesOrderCustomer: SalesOrderCustomer, goods: GoodsRequest): GoodsRequest {
+        return GoodsRequest(salesOrderId = salesOrderCustomer.id, barcode = goods.barcode, quantity = goods.quantity)
     }
 
     private fun headers(index: Int, size: Int) = mapOf("message-sequence.index" to index, "message-sequence.sze" to size)
 
-    fun undo(salesOrder: SalesOrder) = Mono.just(TODO())
+    fun undo(salesOrderCustomer: SalesOrderCustomer) = Mono.just(TODO())
+}
+
+@MessagingGateway
+interface NewSalesOrderGateway {
+
+    @Gateway(requestChannel = "newSalesOrderRequestChannel", replyChannel = "newSalesOrderResponseChannel")
+    fun newSalesOrder(@Payload createSalesOrderRequest: CreateSalesOrderRequest): Mono<String>
 }
 
 
+@Configuration
+class NewSalesOrderPipelineConfig {
+
+    @Bean
+    fun newSalesOrderRequestChannel() = MessageChannels.flux()
+
+    @Bean
+    fun newSalesOrderResponseChannel() = MessageChannels.direct()
+
+
+    @Bean
+    fun newSalesOrderipeline(salesOrderMessageChannel: SalesOrderMessageChannel) =
+            IntegrationFlows.from(newSalesOrderRequestChannel())
+                    .publishSubscribeChannel { channel ->
+                        channel.subscribe { flow ->
+                            flow.transform("payload.salesOrderId")
+                                    .channel(newSalesOrderResponseChannel())
+                        }
+
+                        channel.subscribe { flow ->
+                            flow.enrichHeaders(mapOf("execution-id" to UUID.randomUUID().toString()))
+                                    .channel(salesOrderMessageChannel.createSalesOrderRequestChannel())
+                        }
+                    }
+                    .get()
+}

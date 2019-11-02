@@ -15,11 +15,12 @@ import java.util.*
 
 @EnableIntegration
 @SpringBootApplication
+@IntegrationComponentScan
 @EnableBinding(SalesOrderMessageChannel::class, CatalogMessageChannel::class, InventoryMessageChannel::class)
 class SalesorderServiceApplication {
 
     @Bean
-    fun createSalesOrderListener(salesOrderRepository: SalesOrderRepository) = CreateSalesOrderListener(salesOrderRepository)
+    fun createSalesOrderListener(salesOrderCustomerRepository: SalesOrderCustomerRepository) = CreateSalesOrderListener(salesOrderCustomerRepository)
 
     @Bean
     @GlobalChannelInterceptor
@@ -29,6 +30,7 @@ class SalesorderServiceApplication {
 fun main(args: Array<String>) {
     runApplication<SalesorderServiceApplication>(*args)
 }
+
 class ExecutionIdPropagatorChannelInterceptor : ChannelInterceptor {
 
     override fun preSend(message: Message<*>, channel: MessageChannel): Message<*> {

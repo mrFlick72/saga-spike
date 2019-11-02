@@ -17,7 +17,7 @@ import java.util.*
 
 @SpringBootTest
 @RunWith(SpringRunner::class)
-class CreateSalesOrderListenerTest {
+class CreateSalesOrderCustomerListenerTest {
 
     @Autowired
     lateinit var messageCollector: MessageCollector
@@ -29,15 +29,15 @@ class CreateSalesOrderListenerTest {
     lateinit var salesOrderMessageChannel: SalesOrderMessageChannel
 
     @Autowired
-    lateinit var salesOrderRepository: SalesOrderRepository
+    lateinit var salesOrderCustomerRepository: SalesOrderCustomerRepository
 
     val objectMapper: ObjectMapper = ObjectMapper()
 
     @Test
     fun `create a new salse order happy path`() {
-        val customer = Customer("FIRST_NAME", "LAST_NAME")
-
         val salesOrderId = UUID.randomUUID().toString()
+        val customer = SalesOrderCustomer(salesOrderId, "FIRST_NAME", "LAST_NAME")
+
         val message = withPayload(CreateSalesOrderRequest(salesOrderId,
                 Customer("FIRST_NAME", "LAST_NAME"),
                 listOf(GoodsRequest(barcode = "A_BARCODE", quantity = 10),
@@ -46,9 +46,9 @@ class CreateSalesOrderListenerTest {
 
         salesOrderMessageChannel.createSalesOrderRequestChannel().send(message)
         val actual = extractGoodsRequest()
-        val salesOrder = salesOrderRepository.findById(salesOrderId).block(Duration.ofMinutes(1))
+        val salesOrder = salesOrderCustomerRepository.findById(salesOrderId).block(Duration.ofMinutes(1))
 
-        assertThat(salesOrder!!.customer, Is.`is`(customer))
+        assertThat(salesOrder, Is.`is`(customer))
         val expected = listOf(GoodsRequest(salesOrderId = salesOrderId, barcode = "A_BARCODE", quantity = 10), GoodsRequest(salesOrderId = salesOrderId, barcode = "ANOTHER_BARCODE", quantity = 20))
         assertThat(actual, Is.`is`(expected))
     }

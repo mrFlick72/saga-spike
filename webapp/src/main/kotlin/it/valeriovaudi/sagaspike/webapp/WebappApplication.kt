@@ -4,13 +4,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.cloud.stream.annotation.EnableBinding
 import org.springframework.cloud.stream.annotation.Output
-import org.springframework.integration.annotation.IntegrationComponentScan
-import org.springframework.integration.config.EnableIntegration
 import org.springframework.messaging.SubscribableChannel
 import java.util.*
 
-@EnableIntegration
-@IntegrationComponentScan
 @SpringBootApplication
 @EnableBinding(SalesOrderMessageChannel::class)
 class WebappApplication
