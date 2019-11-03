@@ -28,7 +28,7 @@ class SalesOrderEndPoint {
 
 data class SalesOrderRepresentation(val salesOrderId: String, val customer: CustomerRepresentation, val goods: List<GoodsRepresentation>, val total: Money) {
     companion object {
-        fun of(salesOrder: SalesOrder) =
+        fun of(salesOrder: SalesOrderAggregate) =
                 SalesOrderRepresentation(
                         salesOrderId = salesOrder.id,
                         customer = CustomerRepresentation.of(salesOrder.customer),
@@ -40,14 +40,14 @@ data class SalesOrderRepresentation(val salesOrderId: String, val customer: Cust
 
 data class GoodsRepresentation(var barcode: String, var name: String, var quantity: Int, var price: Money) {
     companion object {
-        fun of(goods: Goods) =
+        fun of(goods: SalesOrderGoods) =
                 GoodsRepresentation(goods.barcode, goods.name, goods.quantity, goods.price)
     }
 }
 
 data class CustomerRepresentation(val firstName: String, val lastName: String) {
     companion object {
-        fun of(customer: SalesOrderCustomer) =
+        fun of(customer: CustomerSalesOrder) =
                 CustomerRepresentation(customer.firstName, customer.lastName)
     }
 }

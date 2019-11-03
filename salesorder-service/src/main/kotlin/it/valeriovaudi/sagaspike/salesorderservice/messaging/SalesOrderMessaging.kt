@@ -17,6 +17,7 @@ import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.messaging.Message
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.handler.annotation.Payload
+import org.springframework.messaging.support.MessageBuilder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
@@ -27,7 +28,7 @@ data class NewSalesOrderRequest(var salesOrderId: String? = null, var customer: 
     constructor() : this(UUID.randomUUID().toString(), CustomerRepresentation("", ""), emptyList())
 }
 
-data class GoodsRequest(var salesOrderId: String? = null, var barcode: String, var quantity: Int) {
+data class GoodsRequest(var barcode: String, var quantity: Int) {
     constructor() : this(barcode = "", quantity = 0)
 }
 
@@ -67,7 +68,7 @@ class CreateSalesOrderUseCaseConfig {
             IntegrationFlows.from(createSalesOrderResponseChannel())
                     .split()
                     .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
-                    .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "payload.salesOrderId") }
+                    .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "headers['sales-order-id']") }
                     .transform { source: GoodsRequest -> GoodsPriceMessageRequest("CATALOG01", source.barcode) }
                     .channel(catalogMessageChannel.goodsPricingRequestChannel())
                     .get()
@@ -78,7 +79,7 @@ class CreateSalesOrderUseCaseConfig {
                                           redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from(responseChannelAdapter())
                     .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
-                    .handle { goods: List<Goods> ->
+                    .handle { goods: List<SalesOrderGoods> ->
                         goodsRepository.saveAll(goods)
                                 .subscribeOn(Schedulers.elastic())
                                 .subscribe()
@@ -94,24 +95,24 @@ class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOr
         output.send(
                 input.flatMap { message ->
                     message.payload.let { payload ->
-                        salesOrderCustomerRepository.save(SalesOrderCustomer(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName))
+                        salesOrderCustomerRepository.save(CustomerSalesOrder(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName))
                                 .flatMap { salesOrder ->
-                                    payload.goods.mapIndexed { index, goods ->
-                                        newGoodsRequest(salesOrder, goods)
-                                    }.toMono()
+                                    MessageBuilder
+                                            .withPayload(payload.goods.mapIndexed { index, goods -> newGoodsRequest(goods) })
+                                            .copyHeaders(mapOf("sales-order-id" to salesOrder.id))
+                                            .build()
+                                            .toMono()
                                 }
                     }
                 }
         )
     }
 
-    private fun newGoodsRequest(salesOrderCustomer: SalesOrderCustomer, goods: GoodsRequest): GoodsRequest {
-        return GoodsRequest(salesOrderId = salesOrderCustomer.id, barcode = goods.barcode, quantity = goods.quantity)
+    private fun newGoodsRequest(goods: GoodsRequest): GoodsRequest {
+        return GoodsRequest(barcode = goods.barcode, quantity = goods.quantity)
     }
 
-    private fun headers(index: Int, size: Int) = mapOf("message-sequence.index" to index, "message-sequence.sze" to size)
-
-    fun undo(salesOrderCustomer: SalesOrderCustomer) = Mono.just(TODO())
+    fun undo(customerSalesOrder: CustomerSalesOrder) = Mono.just(TODO())
 }
 
 

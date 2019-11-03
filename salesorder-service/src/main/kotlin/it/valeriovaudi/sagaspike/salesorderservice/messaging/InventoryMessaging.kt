@@ -1,7 +1,7 @@
 package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
-import it.valeriovaudi.sagaspike.salesorderservice.Goods
 import it.valeriovaudi.sagaspike.salesorderservice.Money
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderGoods
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -41,7 +41,7 @@ class InventoryMessagingListeners {
                 input.flatMap { message ->
                     println("reserveGoodsStreamListener $message");
 
-                    val goods = Goods(id = UUID.randomUUID().toString(),
+                    val goods = SalesOrderGoods(id = UUID.randomUUID().toString(),
                             salesOrderId = message.headers["sales-order-id"] as String,
                             quantity = message.payload.quantity,
                             barcode = message.payload.barcode,

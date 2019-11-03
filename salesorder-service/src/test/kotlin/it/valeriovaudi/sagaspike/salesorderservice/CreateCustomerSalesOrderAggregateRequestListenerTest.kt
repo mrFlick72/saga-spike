@@ -1,6 +1,5 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsRequest
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderRequest
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.SalesOrderMessageChannel
@@ -10,7 +9,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.cloud.stream.test.binder.MessageCollector
 import org.springframework.integration.channel.FluxMessageChannel
 import org.springframework.messaging.support.MessageBuilder.withPayload
 import org.springframework.test.context.junit4.SpringRunner
@@ -20,10 +18,7 @@ import java.util.*
 
 @SpringBootTest
 @RunWith(SpringRunner::class)
-class CreateSalesOrderCustomerRequestListenerTest {
-
-    @Autowired
-    lateinit var messageCollector: MessageCollector
+class CreateCustomerSalesOrderAggregateRequestListenerTest {
 
     @Autowired
     lateinit var createSalesOrderResponseChannel: FluxMessageChannel
@@ -34,12 +29,10 @@ class CreateSalesOrderCustomerRequestListenerTest {
     @Autowired
     lateinit var salesOrderCustomerRepository: SalesOrderCustomerRepository
 
-    val objectMapper: ObjectMapper = ObjectMapper()
-
     @Test
     fun `create a new salse order happy path`() {
         val salesOrderId = UUID.randomUUID().toString()
-        val customer = SalesOrderCustomer(salesOrderId, "FIRST_NAME", "LAST_NAME")
+        val customer = CustomerSalesOrder(salesOrderId, "FIRST_NAME", "LAST_NAME")
 
         val message = withPayload(NewSalesOrderRequest(salesOrderId,
                 CustomerRepresentation("FIRST_NAME", "LAST_NAME"),
@@ -52,7 +45,7 @@ class CreateSalesOrderCustomerRequestListenerTest {
         val salesOrder = salesOrderCustomerRepository.findById(salesOrderId).block(Duration.ofMinutes(1))
 
         assertThat(salesOrder, Is.`is`(customer))
-        val expected = listOf(GoodsRequest(salesOrderId = salesOrderId, barcode = "A_BARCODE", quantity = 10), GoodsRequest(salesOrderId = salesOrderId, barcode = "ANOTHER_BARCODE", quantity = 20))
+        val expected = listOf(GoodsRequest( barcode = "A_BARCODE", quantity = 10), GoodsRequest(barcode = "ANOTHER_BARCODE", quantity = 20))
         assertThat(actual, Is.`is`(expected))
     }
 
