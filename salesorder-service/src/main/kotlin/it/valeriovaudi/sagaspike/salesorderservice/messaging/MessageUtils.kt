@@ -1,4 +1,4 @@
-package it.valeriovaudi.sagaspike.salesorderservice
+package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
 import org.springframework.messaging.MessageHeaders
 

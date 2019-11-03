@@ -1,6 +1,6 @@
-package it.valeriovaudi.sagaspike.salesorderservice
+package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
-import it.valeriovaudi.sagaspike.salesorderservice.MessageUtils.copyHeaders
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.MessageUtils.copyHeaders
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -15,8 +15,20 @@ import reactor.core.publisher.toMono
 import java.io.Serializable
 import java.math.BigDecimal
 
+data class GoodsPriceMessageRequest(val catalogId: String, val barcode: String) : Serializable
 
-data class CatalogGoodsWithPriceMessageRequest(val catalogId: String, val barcode: String) : Serializable
+data class GoodsPriceMessageResponse(var goods: CatalogGoods, var price: CatalogPrice) : Serializable {
+    constructor() : this(CatalogGoods(), CatalogPrice())
+}
+
+data class CatalogGoods(var barcode: String, var name: String) : Serializable {
+    constructor() : this("", "")
+}
+
+data class CatalogPrice(var price: BigDecimal, var currency: String) : Serializable {
+    constructor() : this(BigDecimal.ZERO, "")
+}
+
 
 interface CatalogMessageChannel {
 
@@ -29,12 +41,13 @@ interface CatalogMessageChannel {
 
 @Component
 class CatalogMessagingListeners {
+
     @StreamListener
-    fun goodsPricingStreamListener(@Input("goodsPricingResponseChannel") input: Flux<Message<CatalogGoodsWithPrice>>,
+    fun goodsPricingStreamListener(@Input("goodsPricingResponseChannel") input: Flux<Message<GoodsPriceMessageResponse>>,
                                    @Output("reserveGoodsRequestChannel") output: FluxSender) {
         output.send(
                 input.flatMap { message ->
-                    val payload = InventoryReserveGoodsQuantity(message.payload.goods.barcode, message.headers["goods-quantity"] as Int)
+                    val payload = ReserveGoodsMessage(message.payload.goods.barcode, message.headers["goods-quantity"] as Int)
                     println("goodsPricingStreamListener $payload");
 
                     MessageBuilder.withPayload(payload)
@@ -50,14 +63,3 @@ class CatalogMessagingListeners {
     }
 }
 
-data class CatalogGoods(var barcode: String, var name: String) : Serializable {
-    constructor() : this("", "")
-}
-
-data class CatalogPrice(var price: BigDecimal, var currency: String) : Serializable {
-    constructor() : this(BigDecimal.ZERO, "")
-}
-
-data class CatalogGoodsWithPrice(var goods: CatalogGoods, var price: CatalogPrice) : Serializable {
-    constructor() : this(CatalogGoods(), CatalogPrice())
-}

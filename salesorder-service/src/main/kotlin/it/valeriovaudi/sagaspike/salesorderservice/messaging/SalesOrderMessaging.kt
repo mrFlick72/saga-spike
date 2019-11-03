@@ -1,5 +1,9 @@
-package it.valeriovaudi.sagaspike.salesorderservice
+package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
+import it.valeriovaudi.sagaspike.salesorderservice.Goods
+import it.valeriovaudi.sagaspike.salesorderservice.GoodsRepository
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderCustomer
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderCustomerRepository
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -62,7 +66,7 @@ class CreateSalesOrderUseCaseConfig {
                     .split()
                     .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
                     .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "payload.salesOrderId") }
-                    .transform { source: GoodsRequest -> CatalogGoodsWithPriceMessageRequest("CATALOG01", source.barcode) }
+                    .transform { source: GoodsRequest -> GoodsPriceMessageRequest("CATALOG01", source.barcode) }
                     .channel(catalogMessageChannel.goodsPricingRequestChannel())
                     .get()
 

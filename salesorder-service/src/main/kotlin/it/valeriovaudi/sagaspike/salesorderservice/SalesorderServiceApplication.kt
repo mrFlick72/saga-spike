@@ -1,5 +1,9 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.CatalogMessageChannel
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.CreateSalesOrderListener
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.InventoryMessageChannel
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.SalesOrderMessageChannel
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.cloud.stream.annotation.EnableBinding

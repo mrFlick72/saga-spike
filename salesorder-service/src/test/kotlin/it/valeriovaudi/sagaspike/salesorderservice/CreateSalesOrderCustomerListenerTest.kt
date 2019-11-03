@@ -1,6 +1,10 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.CreateSalesOrderRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.Customer
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.SalesOrderMessageChannel
 import org.hamcrest.core.Is
 import org.junit.Assert.assertThat
 import org.junit.Test

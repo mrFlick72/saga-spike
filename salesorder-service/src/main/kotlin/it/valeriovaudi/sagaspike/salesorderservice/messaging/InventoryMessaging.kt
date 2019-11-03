@@ -1,5 +1,7 @@
-package it.valeriovaudi.sagaspike.salesorderservice
+package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
+import it.valeriovaudi.sagaspike.salesorderservice.Goods
+import it.valeriovaudi.sagaspike.salesorderservice.Money
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -15,7 +17,7 @@ import java.io.Serializable
 import java.math.BigDecimal
 import java.util.*
 
-data class InventoryReserveGoodsQuantity(var barcode: String, var quantity: Int) : Serializable {
+data class ReserveGoodsMessage(var barcode: String, var quantity: Int) : Serializable {
     constructor() : this("", 0)
 }
 
@@ -33,7 +35,7 @@ interface InventoryMessageChannel {
 class InventoryMessagingListeners {
 
     @StreamListener
-    fun execute(@Input("reserveGoodsResponseChannel") input: Flux<Message<InventoryReserveGoodsQuantity>>,
+    fun execute(@Input("reserveGoodsResponseChannel") input: Flux<Message<ReserveGoodsMessage>>,
                 @Output("responseChannelAdapter") output: FluxSender) {
         output.send(
                 input.flatMap { message ->
