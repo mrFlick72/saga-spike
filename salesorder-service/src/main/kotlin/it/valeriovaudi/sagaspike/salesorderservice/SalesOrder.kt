@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono
 import java.io.Serializable
 import java.math.BigDecimal
 
-data class SalesOrder(val customer: SalesOrderCustomer, val goods: List<Goods>, val total: Money)
+data class SalesOrder(val id: String, val customer: SalesOrderCustomer, val goods: List<Goods>, val total: Money)
 
 data class SalesOrderCustomer(@Id var id: String? = null, var firstName: String, var lastName: String)
 
@@ -16,10 +16,6 @@ data class Goods(@Id var id: String? = null, var salesOrderId: String, var barco
 
 data class Money(var value: BigDecimal, var currency: String) : Serializable {
     constructor() : this(BigDecimal.ZERO, "")
-
-    companion object {
-        fun zero() = Money()
-    }
 }
 
 interface SalesOrderCustomerRepository : ReactiveMongoRepository<SalesOrderCustomer, String>
@@ -36,12 +32,12 @@ class GetSalesOrder(private val salesOrderCustomerRepository: SalesOrderCustomer
         return Mono.zip(
                 salesOrderCustomerRepository.findById(salesOrderId),
                 goodsRepository.findAllBySalesOrderId(salesOrderId).collectList(),
-                { customer: SalesOrderCustomer, goods: List<Goods> -> SalesOrder(customer, goods, totalFor(goods)) })
+                { customer: SalesOrderCustomer, goods: List<Goods> -> SalesOrder(salesOrderId, customer, goods, totalFor(goods)) })
 
     }
 
     private fun totalFor(goods: List<Goods>) =
-            goods.map {item ->
+            goods.map { item ->
                 Money(item.price.value.multiply(BigDecimal(item.quantity)), item.price.currency)
             }.reduce { acc, money ->
                 Money(acc.value.add(money.value), acc.currency)
