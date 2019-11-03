@@ -1,9 +1,8 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.CreateSalesOrderRequest
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.Customer
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderRequest
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.SalesOrderMessageChannel
 import org.hamcrest.core.Is
 import org.junit.Assert.assertThat
@@ -21,7 +20,7 @@ import java.util.*
 
 @SpringBootTest
 @RunWith(SpringRunner::class)
-class CreateSalesOrderCustomerListenerTest {
+class CreateSalesOrderCustomerRequestListenerTest {
 
     @Autowired
     lateinit var messageCollector: MessageCollector
@@ -42,8 +41,8 @@ class CreateSalesOrderCustomerListenerTest {
         val salesOrderId = UUID.randomUUID().toString()
         val customer = SalesOrderCustomer(salesOrderId, "FIRST_NAME", "LAST_NAME")
 
-        val message = withPayload(CreateSalesOrderRequest(salesOrderId,
-                Customer("FIRST_NAME", "LAST_NAME"),
+        val message = withPayload(NewSalesOrderRequest(salesOrderId,
+                CustomerRepresentation("FIRST_NAME", "LAST_NAME"),
                 listOf(GoodsRequest(barcode = "A_BARCODE", quantity = 10),
                         GoodsRequest(barcode = "ANOTHER_BARCODE", quantity = 20))))
                 .build()

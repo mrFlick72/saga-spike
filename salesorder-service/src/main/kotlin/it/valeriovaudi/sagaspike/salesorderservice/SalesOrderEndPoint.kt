@@ -1,6 +1,7 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderGateway
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.reactive.function.BodyInserters
@@ -13,7 +14,7 @@ class SalesOrderEndPoint {
     fun routes(newSalesOrderGateway: NewSalesOrderGateway,
                getSalesOrder: GetSalesOrder) = router {
         POST("/sales-order") {
-            it.bodyToMono(it.valeriovaudi.sagaspike.salesorderservice.messaging.CreateSalesOrderRequest::class.java)
+            it.bodyToMono(NewSalesOrderRequest::class.java)
                     .flatMap { newSalesOrderGateway.newSalesOrder(it) }
                     .flatMap { ok().body(BodyInserters.fromObject(it)) }
         }
@@ -24,7 +25,6 @@ class SalesOrderEndPoint {
         }
     }
 }
-
 
 data class SalesOrderRepresentation(val salesOrderId: String, val customer: CustomerRepresentation, val goods: List<GoodsRepresentation>, val total: Money) {
     companion object {

@@ -1,9 +1,6 @@
 package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
-import it.valeriovaudi.sagaspike.salesorderservice.Goods
-import it.valeriovaudi.sagaspike.salesorderservice.GoodsRepository
-import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderCustomer
-import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderCustomerRepository
+import it.valeriovaudi.sagaspike.salesorderservice.*
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -26,15 +23,20 @@ import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
 import java.util.*
 
-data class CreateSalesOrderRequest(var salesOrderId: String? = null, var customer: Customer, var goods: List<GoodsRequest> = emptyList()) {
-    constructor() : this(UUID.randomUUID().toString(), Customer("", ""), emptyList())
-}
-data class Customer(var firstName: String, var lastName: String) {
-    constructor() : this("", "")
+data class NewSalesOrderRequest(var salesOrderId: String? = null, var customer: CustomerRepresentation, var goods: List<GoodsRequest> = emptyList()) {
+    constructor() : this(UUID.randomUUID().toString(), CustomerRepresentation("", ""), emptyList())
 }
 
 data class GoodsRequest(var salesOrderId: String? = null, var barcode: String, var quantity: Int) {
     constructor() : this(barcode = "", quantity = 0)
+}
+
+@MessagingGateway
+interface NewSalesOrderGateway {
+
+    @Gateway(requestChannel = "newSalesOrderRequestChannel", replyChannel = "newSalesOrderResponseChannel")
+    fun newSalesOrder(@Payload newSalesOrderRequest: NewSalesOrderRequest): Mono<String>
+
 }
 
 interface SalesOrderMessageChannel {
@@ -62,7 +64,7 @@ class CreateSalesOrderUseCaseConfig {
 
     @Bean
     fun createSalesOrderUseCaseSplittator(catalogMessageChannel: CatalogMessageChannel) =
-            IntegrationFlows.from("createSalesOrderResponseChannel")
+            IntegrationFlows.from(createSalesOrderResponseChannel())
                     .split()
                     .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
                     .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "payload.salesOrderId") }
@@ -87,7 +89,7 @@ class CreateSalesOrderUseCaseConfig {
 class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOrderCustomerRepository) {
 
     @StreamListener
-    fun execute(@Input("createSalesOrderRequestChannel") input: Flux<Message<CreateSalesOrderRequest>>,
+    fun execute(@Input("createSalesOrderRequestChannel") input: Flux<Message<NewSalesOrderRequest>>,
                 @Output("createSalesOrderResponseChannel") output: FluxSender) {
         output.send(
                 input.flatMap { message ->
@@ -110,13 +112,6 @@ class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOr
     private fun headers(index: Int, size: Int) = mapOf("message-sequence.index" to index, "message-sequence.sze" to size)
 
     fun undo(salesOrderCustomer: SalesOrderCustomer) = Mono.just(TODO())
-}
-
-@MessagingGateway
-interface NewSalesOrderGateway {
-
-    @Gateway(requestChannel = "newSalesOrderRequestChannel", replyChannel = "newSalesOrderResponseChannel")
-    fun newSalesOrder(@Payload createSalesOrderRequest: CreateSalesOrderRequest): Mono<String>
 }
 
 
