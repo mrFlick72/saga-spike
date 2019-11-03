@@ -2,7 +2,6 @@ package it.valeriovaudi.sagaspike.inventoryservice
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository
-import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Mono
 
 data class Goods(@Id val barcode: String, val name: String, val availability: Int)
@@ -11,7 +10,6 @@ data class NotAvailableGoods(var barcode: String, var quantity: Int, var errorMe
 
 class NoGoodsAvailabilityException(message: String) : RuntimeException(message)
 
-@Transactional(readOnly = true)
 interface InventoryRepository : ReactiveMongoRepository<Goods, String> {
     fun findByBarcode(barcode: String): Mono<Goods>
 }
