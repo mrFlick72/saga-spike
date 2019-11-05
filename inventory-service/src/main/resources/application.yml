@@ -1,15 +1,18 @@
-#spring:
-#  cloud:
-#    stream:
-#      bindings:
-#        reserveGoodsRequestChannel:
-#          group: reserveGoodsRequest
-#
-#        reserveGoodsResponseChannel:
-#          group: reserveGoodsResponse
-#
-#        unReserveGoodsRequestChannel:
-#          group: unReserveGoodsRequest
-#
-#        unReserveGoodsResponseChannel:
-#          group: unReserveGoodsResponse
+spring:
+  cloud:
+    stream:
+      bindings:
+        reserveGoodsErrorChannel:
+          group: reserveGoodsError
+
+        reserveGoodsRequestChannel:
+          group: reserveGoodsRequest
+
+        reserveGoodsResponseChannel:
+          group: reserveGoodsResponse
+
+        unReserveGoodsRequestChannel:
+          group: unReserveGoodsRequest
+
+        unReserveGoodsResponseChannel:
+          group: unReserveGoodsResponse

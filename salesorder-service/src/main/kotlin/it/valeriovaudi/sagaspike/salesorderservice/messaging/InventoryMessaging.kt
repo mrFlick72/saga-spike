@@ -17,7 +17,15 @@ import java.io.Serializable
 import java.math.BigDecimal
 import java.util.*
 
-data class ReserveGoodsMessage(var barcode: String, var quantity: Int) : Serializable {
+open class GoodsMessage(var barcode: String, var quantity: Int) : Serializable {
+    constructor() : this("", 0)
+}
+
+class NotAvailableGoods(barcode: String, quantity: Int, var errorMessage: String) : GoodsMessage(barcode, quantity) {
+    constructor() : this("", 0, "")
+}
+
+class ReserveGoodsMessage(barcode: String, quantity: Int) : GoodsMessage(barcode, quantity) {
     constructor() : this("", 0)
 }
 
@@ -28,6 +36,9 @@ interface InventoryMessageChannel {
 
     @Input
     fun reserveGoodsResponseChannel(): SubscribableChannel
+
+    @Input
+    fun reserveGoodsErrorChannel(): SubscribableChannel
 
 }
 
@@ -51,9 +62,35 @@ class InventoryMessagingListeners {
 
                     MessageBuilder.withPayload(goods)
                             .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                            .setHeader("goods-to-remove", false)
                             .build().toMono()
                 }
         )
+    }
+
+
+    @StreamListener
+    fun errorHandling(@Input("reserveGoodsErrorChannel") input: Flux<Message<NotAvailableGoods>>,
+                      @Output("responseChannelAdapter") output: FluxSender) {
+        output.send(
+                input.flatMap { message ->
+                    println("errorHandlingStreamListener $message");
+
+                    val goods = SalesOrderGoods(id = UUID.randomUUID().toString(),
+                            salesOrderId = message.headers["sales-order-id"] as String,
+                            quantity = message.payload.quantity,
+                            barcode = message.payload.barcode,
+                            name = message.headers["goods-name"] as String,
+                            price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
+
+
+                    MessageBuilder.withPayload(goods)
+                            .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                            .setHeader("goods-to-remove", true)
+                            .build().toMono()
+                }
+        )
+
     }
 
 }

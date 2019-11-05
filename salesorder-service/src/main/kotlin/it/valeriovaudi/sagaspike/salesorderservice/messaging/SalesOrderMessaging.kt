@@ -8,12 +8,15 @@ import org.springframework.cloud.stream.reactive.FluxSender
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.RedisConnectionFactory
+import org.springframework.integration.aggregator.DefaultAggregatingMessageGroupProcessor
 import org.springframework.integration.annotation.Gateway
 import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.redis.store.RedisMessageStore
+import org.springframework.integration.router.HeaderValueRouter
+import org.springframework.integration.store.MessageGroup
 import org.springframework.messaging.Message
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.handler.annotation.Payload
@@ -60,6 +63,12 @@ class CreateSalesOrderUseCaseConfig {
     fun createSalesOrderResponseChannel() = MessageChannels.flux()
 
     @Bean
+    fun processSalesOrderGoods() = MessageChannels.flux();
+
+    @Bean
+    fun rollbackSalesOrderGoods() = MessageChannels.flux();
+
+    @Bean
     fun redisMessageStore(redisConnectionFactory: RedisConnectionFactory) =
             RedisMessageStore(redisConnectionFactory)
 
@@ -78,13 +87,41 @@ class CreateSalesOrderUseCaseConfig {
                                           catalogMessageChannel: CatalogMessageChannel,
                                           redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from(responseChannelAdapter())
-                    .aggregate { aggregatorSpec -> aggregatorSpec.messageStore(redisMessageStore) }
+                    .aggregate { aggregatorSpec ->
+                        aggregatorSpec
+                                .messageStore(redisMessageStore)
+                                .outputProcessor(SalesOrderGoodsAggregator())
+                    }
+                    .route(salesOrderGoodsrRuter())
+                    .get()
+
+    @Bean
+    fun rollbackSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
+                                        catalogMessageChannel: CatalogMessageChannel,
+                                        redisMessageStore: RedisMessageStore) =
+            IntegrationFlows.from(rollbackSalesOrderGoods())
                     .handle { goods: List<SalesOrderGoods> ->
+                        println("rollback goods")
+                        println(goods)
+                        Unit
+                    }.get()
+
+
+    @Bean
+    fun processSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
+                                       catalogMessageChannel: CatalogMessageChannel,
+                                       redisMessageStore: RedisMessageStore) =
+            IntegrationFlows.from(processSalesOrderGoods())
+                    .log()
+                    .handle { goods: List<SalesOrderGoods> ->
+                        println("processSalesOrderGoods goods")
+
                         goodsRepository.saveAll(goods)
                                 .subscribeOn(Schedulers.elastic())
                                 .subscribe()
                         Unit
                     }.get()
+
 }
 
 class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOrderCustomerRepository) {
@@ -142,3 +179,23 @@ class NewSalesOrderPipelineConfig {
                     }
                     .get()
 }
+
+fun salesOrderGoodsrRuter(): HeaderValueRouter {
+    val router = HeaderValueRouter("goods-to-remove")
+    router.setChannelMapping("false", "processSalesOrderGoods");
+    router.setChannelMapping("true", "rollbackSalesOrderGoods");
+    return router
+}
+
+class SalesOrderGoodsAggregator : DefaultAggregatingMessageGroupProcessor() {
+
+    override fun aggregateHeaders(group: MessageGroup): MutableMap<String, Any> {
+        val aggregateHeaders = super.aggregateHeaders(group)
+        val aggregation = group.messages.stream().anyMatch { msg: Message<*> -> haveToRollback(msg) }
+        aggregateHeaders.put("goods-to-remove", aggregation)
+        return aggregateHeaders
+    }
+}
+
+private fun haveToRollback(message: Message<*>) =
+        message.headers.getOrDefault("goods-to-remove", false) as Boolean
