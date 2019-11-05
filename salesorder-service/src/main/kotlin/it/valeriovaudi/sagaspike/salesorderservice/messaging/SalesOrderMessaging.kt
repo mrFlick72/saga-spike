@@ -92,7 +92,7 @@ class CreateSalesOrderUseCaseConfig {
                                 .messageStore(redisMessageStore)
                                 .outputProcessor(SalesOrderGoodsAggregator())
                     }
-                    .route(salesOrderGoodsrRuter())
+                    .route(salesOrderGoodsInventoryProcessorRouter())
                     .get()
 
     @Bean
@@ -180,10 +180,10 @@ class NewSalesOrderPipelineConfig {
                     .get()
 }
 
-fun salesOrderGoodsrRuter(): HeaderValueRouter {
+fun salesOrderGoodsInventoryProcessorRouter(): HeaderValueRouter {
     val router = HeaderValueRouter("goods-to-remove")
-    router.setChannelMapping("false", "processSalesOrderGoods");
-    router.setChannelMapping("true", "rollbackSalesOrderGoods");
+    router.setChannelMapping("false", "processSalesOrderGoods")
+    router.setChannelMapping("true", "rollbackSalesOrderGoods")
     return router
 }
 
