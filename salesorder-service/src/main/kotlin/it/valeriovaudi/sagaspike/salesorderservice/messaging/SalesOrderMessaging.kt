@@ -14,8 +14,9 @@ import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.dsl.MessageChannels
+import org.springframework.integration.dsl.RouterSpec
 import org.springframework.integration.redis.store.RedisMessageStore
-import org.springframework.integration.router.HeaderValueRouter
+import org.springframework.integration.router.ExpressionEvaluatingRouter
 import org.springframework.integration.store.MessageGroup
 import org.springframework.messaging.Message
 import org.springframework.messaging.SubscribableChannel
@@ -92,7 +93,10 @@ class CreateSalesOrderUseCaseConfig {
                                 .messageStore(redisMessageStore)
                                 .outputProcessor(SalesOrderGoodsAggregator())
                     }
-                    .route(salesOrderGoodsInventoryProcessorRouter())
+                    .route("headers['goods-to-remove']", { t: RouterSpec<String, ExpressionEvaluatingRouter> ->
+                        t.channelMapping("false", "processSalesOrderGoods")
+                                .channelMapping("true", "rollbackSalesOrderGoods")
+                    })
                     .get()
 
     @Bean
@@ -180,18 +184,11 @@ class NewSalesOrderPipelineConfig {
                     .get()
 }
 
-fun salesOrderGoodsInventoryProcessorRouter(): HeaderValueRouter {
-    val router = HeaderValueRouter("goods-to-remove")
-    router.setChannelMapping("false", "processSalesOrderGoods")
-    router.setChannelMapping("true", "rollbackSalesOrderGoods")
-    return router
-}
-
 class SalesOrderGoodsAggregator : DefaultAggregatingMessageGroupProcessor() {
 
     override fun aggregateHeaders(group: MessageGroup): MutableMap<String, Any> {
         val aggregateHeaders = super.aggregateHeaders(group)
-        val aggregation = group.messages.stream().anyMatch { msg: Message<*> -> haveToRollback(msg) }
+        val aggregation = group.messages.stream().anyMatch { msg: Message<*> -> haveToRollback(msg) }.or(false)
         aggregateHeaders.put("goods-to-remove", aggregation)
         return aggregateHeaders
     }

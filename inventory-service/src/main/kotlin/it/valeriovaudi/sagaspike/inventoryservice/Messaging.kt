@@ -76,13 +76,14 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
             error.send(
                     message.payload.let {
                         println("sendErrorMessage")
-                        Flux.just(NotAvailableGoods(
+                        Flux.just(MessageBuilder.withPayload(NotAvailableGoods(
                                 barcode = it.barcode,
                                 quantity = it.quantity,
                                 errorMessage = e.message ?: ""))
+                                .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                                .build())
                     }
-            )
-                    .then(Mono.empty())
+            ).then(Mono.empty())
         }
     }
 }

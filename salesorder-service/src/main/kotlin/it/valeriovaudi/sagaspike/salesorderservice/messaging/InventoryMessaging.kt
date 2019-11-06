@@ -77,11 +77,15 @@ class InventoryMessagingListeners {
                     println("errorHandlingStreamListener $message");
 
                     val goods = SalesOrderGoods(id = UUID.randomUUID().toString(),
-                            salesOrderId = message.headers["sales-order-id"] as String,
+                            salesOrderId = message.headers.getOrDefault("sales-order-id", "") as String,
                             quantity = message.payload.quantity,
                             barcode = message.payload.barcode,
-                            name = message.headers["goods-name"] as String,
-                            price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
+                            name = message.headers.getOrDefault("goods-name", "") as String,
+                            price = Money(
+                                    BigDecimal(message.headers.getOrDefault("goods-price", "0") as String),
+                                    message.headers.getOrDefault("currency", "") as String
+                            )
+                    )
 
 
                     MessageBuilder.withPayload(goods)
