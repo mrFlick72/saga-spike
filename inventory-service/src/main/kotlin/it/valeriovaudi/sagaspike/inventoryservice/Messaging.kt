@@ -55,6 +55,7 @@ class ReserveGoodsListener(private val reserveGoods: ReserveGoods) {
     fun handleGoodsUnReservation(@Input("unReserveGoodsRequestChannel") input: Flux<Message<ReserveGoodsQuantity>>,
                                  @Output("unReserveGoodsResponseChannel") output: FluxSender) {
         output.send(input.flatMap { message ->
+            println("unreserve the goods $message")
             message.payload.let {
                 reserveGoods.undo(it.barcode, it.quantity)
                         .map(sendSuccessfulMessage(message))

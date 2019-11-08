@@ -40,6 +40,8 @@ interface InventoryMessageChannel {
     @Input
     fun reserveGoodsErrorChannel(): SubscribableChannel
 
+    @Output
+    fun unReserveGoodsRequestChannel(): MessageChannel
 }
 
 @Component

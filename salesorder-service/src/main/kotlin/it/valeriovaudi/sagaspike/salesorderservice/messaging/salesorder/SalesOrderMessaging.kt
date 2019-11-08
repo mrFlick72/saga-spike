@@ -4,6 +4,8 @@ import it.valeriovaudi.sagaspike.salesorderservice.GoodsRepository
 import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderGoods
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.CatalogMessageChannel
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsPriceMessageRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.InventoryMessageChannel
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.ReserveGoodsMessage
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.integration.aggregator.DefaultAggregatingMessageGroupProcessor
@@ -11,12 +13,14 @@ import org.springframework.integration.annotation.Gateway
 import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
+import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.dsl.RouterSpec
 import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.integration.router.ExpressionEvaluatingRouter
 import org.springframework.integration.store.MessageGroup
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
+import org.springframework.messaging.MessageHeaders
 import org.springframework.messaging.handler.annotation.Payload
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toFlux
@@ -84,18 +88,24 @@ class NewSalesOrderPipelineConfig {
     @Bean
     fun rollbackSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
                                         rollbackSalesOrderGoods: MessageChannel,
+                                        inventoryMessageChannel: InventoryMessageChannel,
                                         catalogMessageChannel: CatalogMessageChannel,
                                         redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from(rollbackSalesOrderGoods)
-                    .handle { goods: List<SalesOrderGoods> ->
+                    .handle { goods: List<SalesOrderGoods>, headers: MessageHeaders ->
+
                         println("rollback goods")
                         println(goods)
                         goods.toFlux()
-                                .flatMap { goodsRepository.delete(it) }
-                                .subscribeOn(Schedulers.elastic())
-                                .subscribe()
-                        Unit
-                    }.get()
+                                .map {
+                                    goodsRepository.delete(it)
+                                    ReserveGoodsMessage(it.barcode, it.quantity)
+                                }
+                    }
+                    .channel(MessageChannels.flux())
+                    .split()
+                    .channel(inventoryMessageChannel.unReserveGoodsRequestChannel())
+                    .get()
 
 
     @Bean
