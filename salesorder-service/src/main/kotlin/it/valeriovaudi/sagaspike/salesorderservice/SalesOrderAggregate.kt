@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.ReactiveMongoRepository
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.toMono
 import java.io.Serializable
 import java.math.BigDecimal
 
@@ -30,15 +31,20 @@ class GetSalesOrder(private val salesOrderCustomerRepository: SalesOrderCustomer
     fun execute(salesOrderId: String): Mono<SalesOrderAggregate> {
         return Mono.zip(
                 salesOrderCustomerRepository.findById(salesOrderId),
-                goodsRepository.findAllBySalesOrderId(salesOrderId).collectList(),
+                goodsRepository.findAllBySalesOrderId(salesOrderId).collectList()
+                        .switchIfEmpty(emptyList<SalesOrderGoods>().toMono()),
                 { customer: CustomerSalesOrder, goods: List<SalesOrderGoods> -> SalesOrderAggregate(salesOrderId, customer, goods, totalFor(goods)) })
 
     }
 
     private fun totalFor(goods: List<SalesOrderGoods>) =
-            goods.map { item ->
-                Money(item.price.value.multiply(BigDecimal(item.quantity)), item.price.currency)
-            }.reduce { acc, money ->
-                Money(acc.value.add(money.value), acc.currency)
+            if(goods.isNotEmpty()) {
+                goods.map { item ->
+                    Money(item.price.value.multiply(BigDecimal(item.quantity)), item.price.currency)
+                }.reduce { acc, money ->
+                    Money(acc.value.add(money.value), acc.currency)
+                }
+            }else {
+                Money(BigDecimal.ZERO, "EUR")
             }
 }

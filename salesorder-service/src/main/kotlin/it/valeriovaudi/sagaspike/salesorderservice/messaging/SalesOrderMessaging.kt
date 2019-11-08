@@ -19,11 +19,13 @@ import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.integration.router.ExpressionEvaluatingRouter
 import org.springframework.integration.store.MessageGroup
 import org.springframework.messaging.Message
+import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.messaging.support.MessageBuilder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.toFlux
 import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
 import java.util.*
@@ -52,7 +54,7 @@ interface SalesOrderMessageChannel {
 }
 
 @Configuration
-class CreateSalesOrderUseCaseConfig {
+class SalesOrderMessageChannelConfig {
 
     @Bean
     fun salesOrderCompleteChannel() = MessageChannels.flux()
@@ -69,13 +71,19 @@ class CreateSalesOrderUseCaseConfig {
     @Bean
     fun rollbackSalesOrderGoods() = MessageChannels.flux();
 
+}
+
+@Configuration
+class CreateSalesOrderUseCaseConfig {
+
     @Bean
     fun redisMessageStore(redisConnectionFactory: RedisConnectionFactory) =
             RedisMessageStore(redisConnectionFactory)
 
     @Bean
-    fun createSalesOrderUseCaseSplittator(catalogMessageChannel: CatalogMessageChannel) =
-            IntegrationFlows.from(createSalesOrderResponseChannel())
+    fun createSalesOrderUseCaseSplittator(createSalesOrderResponseChannel: MessageChannel,
+                                          catalogMessageChannel: CatalogMessageChannel) =
+            IntegrationFlows.from(createSalesOrderResponseChannel)
                     .split()
                     .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
                     .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "headers['sales-order-id']") }
@@ -85,37 +93,45 @@ class CreateSalesOrderUseCaseConfig {
 
     @Bean
     fun createSalesOrderUseCaseAggregator(goodsRepository: GoodsRepository,
+                                          responseChannelAdapter: MessageChannel,
                                           catalogMessageChannel: CatalogMessageChannel,
                                           redisMessageStore: RedisMessageStore) =
-            IntegrationFlows.from(responseChannelAdapter())
+            IntegrationFlows.from(responseChannelAdapter)
                     .aggregate { aggregatorSpec ->
                         aggregatorSpec
                                 .messageStore(redisMessageStore)
                                 .outputProcessor(SalesOrderGoodsAggregator())
                     }
-                    .route("headers['goods-to-remove']", { t: RouterSpec<String, ExpressionEvaluatingRouter> ->
+                    .route("headers['goods-to-remove']") { t: RouterSpec<String, ExpressionEvaluatingRouter> ->
                         t.channelMapping("false", "processSalesOrderGoods")
                                 .channelMapping("true", "rollbackSalesOrderGoods")
-                    })
+                    }
                     .get()
 
     @Bean
     fun rollbackSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
+                                        rollbackSalesOrderGoods: MessageChannel,
                                         catalogMessageChannel: CatalogMessageChannel,
                                         redisMessageStore: RedisMessageStore) =
-            IntegrationFlows.from(rollbackSalesOrderGoods())
+            IntegrationFlows.from(rollbackSalesOrderGoods)
                     .handle { goods: List<SalesOrderGoods> ->
                         println("rollback goods")
                         println(goods)
+                        goods.toFlux()
+                                .flatMap { goodsRepository.delete(it) }
+                                .subscribeOn(Schedulers.elastic())
+                                .subscribe()
+                        Unit
                         Unit
                     }.get()
 
 
     @Bean
     fun processSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
+                                       processSalesOrderGoods: MessageChannel,
                                        catalogMessageChannel: CatalogMessageChannel,
                                        redisMessageStore: RedisMessageStore) =
-            IntegrationFlows.from(processSalesOrderGoods())
+            IntegrationFlows.from(processSalesOrderGoods)
                     .log()
                     .handle { goods: List<SalesOrderGoods> ->
                         println("processSalesOrderGoods goods")
