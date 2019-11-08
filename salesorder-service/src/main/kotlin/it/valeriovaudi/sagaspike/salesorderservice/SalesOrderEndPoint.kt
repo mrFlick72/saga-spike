@@ -1,7 +1,7 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderGateway
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder.NewSalesOrderGateway
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder.NewSalesOrderRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.reactive.function.BodyInserters

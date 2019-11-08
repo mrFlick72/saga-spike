@@ -1,8 +1,8 @@
 package it.valeriovaudi.sagaspike.salesorderservice
 
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsRequest
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.NewSalesOrderRequest
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.SalesOrderMessageChannel
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder.GoodsRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder.NewSalesOrderRequest
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder.SalesOrderMessageChannel
 import org.hamcrest.core.Is
 import org.junit.Assert.assertThat
 import org.junit.Test
@@ -45,7 +45,7 @@ class CreateCustomerSalesOrderAggregateRequestListenerTest {
         val salesOrder = salesOrderCustomerRepository.findById(salesOrderId).block(Duration.ofMinutes(1))
 
         assertThat(salesOrder, Is.`is`(customer))
-        val expected = listOf(GoodsRequest( barcode = "A_BARCODE", quantity = 10), GoodsRequest(barcode = "ANOTHER_BARCODE", quantity = 20))
+        val expected = listOf(GoodsRequest(barcode = "A_BARCODE", quantity = 10), GoodsRequest(barcode = "ANOTHER_BARCODE", quantity = 20))
         assertThat(actual, Is.`is`(expected))
     }
 

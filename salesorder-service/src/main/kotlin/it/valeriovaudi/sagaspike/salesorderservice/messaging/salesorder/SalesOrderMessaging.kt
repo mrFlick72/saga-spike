@@ -1,42 +1,27 @@
-package it.valeriovaudi.sagaspike.salesorderservice.messaging
+package it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder
 
-import it.valeriovaudi.sagaspike.salesorderservice.*
-import org.springframework.cloud.stream.annotation.Input
-import org.springframework.cloud.stream.annotation.Output
-import org.springframework.cloud.stream.annotation.StreamListener
-import org.springframework.cloud.stream.reactive.FluxSender
+import it.valeriovaudi.sagaspike.salesorderservice.GoodsRepository
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderGoods
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.CatalogMessageChannel
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsPriceMessageRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.integration.aggregator.DefaultAggregatingMessageGroupProcessor
 import org.springframework.integration.annotation.Gateway
 import org.springframework.integration.annotation.MessagingGateway
 import org.springframework.integration.dsl.EnricherSpec
 import org.springframework.integration.dsl.IntegrationFlows
-import org.springframework.integration.dsl.MessageChannels
 import org.springframework.integration.dsl.RouterSpec
 import org.springframework.integration.redis.store.RedisMessageStore
 import org.springframework.integration.router.ExpressionEvaluatingRouter
 import org.springframework.integration.store.MessageGroup
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
-import org.springframework.messaging.SubscribableChannel
 import org.springframework.messaging.handler.annotation.Payload
-import org.springframework.messaging.support.MessageBuilder
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toFlux
-import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
 import java.util.*
-
-data class NewSalesOrderRequest(var salesOrderId: String? = null, var customer: CustomerRepresentation, var goods: List<GoodsRequest> = emptyList()) {
-    constructor() : this(UUID.randomUUID().toString(), CustomerRepresentation("", ""), emptyList())
-}
-
-data class GoodsRequest(var barcode: String, var quantity: Int) {
-    constructor() : this(barcode = "", quantity = 0)
-}
 
 @MessagingGateway
 interface NewSalesOrderGateway {
@@ -46,39 +31,27 @@ interface NewSalesOrderGateway {
 
 }
 
-interface SalesOrderMessageChannel {
-
-    @Input
-    fun createSalesOrderRequestChannel(): SubscribableChannel
-
-}
 
 @Configuration
-class SalesOrderMessageChannelConfig {
+class NewSalesOrderPipelineConfig {
 
     @Bean
-    fun salesOrderCompleteChannel() = MessageChannels.flux()
+    fun newSalesOrderPiline(newSalesOrderRequestChannel: MessageChannel,
+                            newSalesOrderResponseChannel: MessageChannel,
+                            salesOrderMessageChannel: SalesOrderMessageChannel) =
+            IntegrationFlows.from(newSalesOrderRequestChannel)
+                    .publishSubscribeChannel { channel ->
+                        channel.subscribe { flow ->
+                            flow.transform("payload.salesOrderId")
+                                    .channel(newSalesOrderResponseChannel)
+                        }
 
-    @Bean
-    fun responseChannelAdapter() = MessageChannels.flux()
-
-    @Bean
-    fun createSalesOrderResponseChannel() = MessageChannels.flux()
-
-    @Bean
-    fun processSalesOrderGoods() = MessageChannels.flux();
-
-    @Bean
-    fun rollbackSalesOrderGoods() = MessageChannels.flux();
-
-}
-
-@Configuration
-class CreateSalesOrderUseCaseConfig {
-
-    @Bean
-    fun redisMessageStore(redisConnectionFactory: RedisConnectionFactory) =
-            RedisMessageStore(redisConnectionFactory)
+                        channel.subscribe { flow ->
+                            flow.enrichHeaders(mapOf("execution-id" to UUID.randomUUID().toString()))
+                                    .channel(salesOrderMessageChannel.createSalesOrderRequestChannel())
+                        }
+                    }
+                    .get()
 
     @Bean
     fun createSalesOrderUseCaseSplittator(createSalesOrderResponseChannel: MessageChannel,
@@ -122,7 +95,6 @@ class CreateSalesOrderUseCaseConfig {
                                 .subscribeOn(Schedulers.elastic())
                                 .subscribe()
                         Unit
-                        Unit
                     }.get()
 
 
@@ -144,67 +116,11 @@ class CreateSalesOrderUseCaseConfig {
 
 }
 
-class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOrderCustomerRepository) {
-
-    @StreamListener
-    fun execute(@Input("createSalesOrderRequestChannel") input: Flux<Message<NewSalesOrderRequest>>,
-                @Output("createSalesOrderResponseChannel") output: FluxSender) {
-        output.send(
-                input.flatMap { message ->
-                    message.payload.let { payload ->
-                        salesOrderCustomerRepository.save(CustomerSalesOrder(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName))
-                                .flatMap { salesOrder ->
-                                    MessageBuilder
-                                            .withPayload(payload.goods.mapIndexed { index, goods -> newGoodsRequest(goods) })
-                                            .copyHeaders(mapOf("sales-order-id" to salesOrder.id))
-                                            .build()
-                                            .toMono()
-                                }
-                    }
-                }
-        )
-    }
-
-    private fun newGoodsRequest(goods: GoodsRequest): GoodsRequest {
-        return GoodsRequest(barcode = goods.barcode, quantity = goods.quantity)
-    }
-
-    fun undo(customerSalesOrder: CustomerSalesOrder) = Mono.just(TODO())
-}
-
-
-@Configuration
-class NewSalesOrderPipelineConfig {
-
-    @Bean
-    fun newSalesOrderRequestChannel() = MessageChannels.flux()
-
-    @Bean
-    fun newSalesOrderResponseChannel() = MessageChannels.direct()
-
-
-    @Bean
-    fun newSalesOrderipeline(salesOrderMessageChannel: SalesOrderMessageChannel) =
-            IntegrationFlows.from(newSalesOrderRequestChannel())
-                    .publishSubscribeChannel { channel ->
-                        channel.subscribe { flow ->
-                            flow.transform("payload.salesOrderId")
-                                    .channel(newSalesOrderResponseChannel())
-                        }
-
-                        channel.subscribe { flow ->
-                            flow.enrichHeaders(mapOf("execution-id" to UUID.randomUUID().toString()))
-                                    .channel(salesOrderMessageChannel.createSalesOrderRequestChannel())
-                        }
-                    }
-                    .get()
-}
-
 class SalesOrderGoodsAggregator : DefaultAggregatingMessageGroupProcessor() {
 
     override fun aggregateHeaders(group: MessageGroup): MutableMap<String, Any> {
         val aggregateHeaders = super.aggregateHeaders(group)
-        val aggregation = group.messages.stream().anyMatch { msg: Message<*> -> haveToRollback(msg) }.or(false)
+        val aggregation = group.messages.stream().anyMatch(::haveToRollback).or(false)
         aggregateHeaders.put("goods-to-remove", aggregation)
         return aggregateHeaders
     }
