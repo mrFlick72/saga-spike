@@ -22,7 +22,7 @@ class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOr
                         salesOrderCustomerRepository.save(CustomerSalesOrder(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName))
                                 .flatMap { salesOrder ->
                                     MessageBuilder
-                                            .withPayload(payload.goods.mapIndexed { index, goods -> newGoodsRequest(payload.catalogId, goods) })
+                                            .withPayload(payload.goods.mapIndexed { index, goods -> newGoodsRequest(goods) })
                                             .copyHeaders(mapOf("sales-order-id" to salesOrder.id))
                                             .build()
                                             .toMono()
@@ -32,8 +32,8 @@ class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOr
         )
     }
 
-    private fun newGoodsRequest(catalogId: String, goods: GoodsRequest): GoodsRequest {
-        return GoodsRequest(catalogId, barcode = goods.barcode, quantity = goods.quantity)
+    private fun newGoodsRequest(goods: GoodsRequest): GoodsRequest {
+        return GoodsRequest(goods.catalogId, barcode = goods.barcode, quantity = goods.quantity)
     }
 
 }

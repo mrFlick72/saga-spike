@@ -34,7 +34,7 @@ class CreateCustomerSalesOrderAggregateRequestListenerTest {
         val salesOrderId = UUID.randomUUID().toString()
         val customer = CustomerSalesOrder(salesOrderId, "FIRST_NAME", "LAST_NAME")
 
-        val message = withPayload(NewSalesOrderRequest(salesOrderId, "",
+        val message = withPayload(NewSalesOrderRequest(salesOrderId,
                 CustomerRepresentation("FIRST_NAME", "LAST_NAME"),
                 listOf(GoodsRequest(catalogId = "", barcode = "A_BARCODE", quantity = 10),
                         GoodsRequest(catalogId = "", barcode = "ANOTHER_BARCODE", quantity = 20))))
