@@ -62,7 +62,7 @@ class NewSalesOrderUseCaseConfig {
                     .split()
                     .enrich { t: EnricherSpec -> t.headerExpression("goods-quantity", "payload.quantity") }
                     .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "headers['sales-order-id']") }
-                    .transform { source: GoodsRequest -> GoodsPriceMessageRequest("CATALOG01", source.barcode) }
+                    .transform { source: GoodsRequest -> GoodsPriceMessageRequest(source.catalogId, source.barcode) }
                     .channel(catalogMessageChannel.goodsPricingRequestChannel())
                     .get()
 

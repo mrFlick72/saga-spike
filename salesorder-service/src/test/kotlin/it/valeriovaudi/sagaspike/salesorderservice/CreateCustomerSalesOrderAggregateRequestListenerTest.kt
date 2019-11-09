@@ -34,10 +34,10 @@ class CreateCustomerSalesOrderAggregateRequestListenerTest {
         val salesOrderId = UUID.randomUUID().toString()
         val customer = CustomerSalesOrder(salesOrderId, "FIRST_NAME", "LAST_NAME")
 
-        val message = withPayload(NewSalesOrderRequest(salesOrderId,
+        val message = withPayload(NewSalesOrderRequest(salesOrderId, "",
                 CustomerRepresentation("FIRST_NAME", "LAST_NAME"),
-                listOf(GoodsRequest(barcode = "A_BARCODE", quantity = 10),
-                        GoodsRequest(barcode = "ANOTHER_BARCODE", quantity = 20))))
+                listOf(GoodsRequest(catalogId = "", barcode = "A_BARCODE", quantity = 10),
+                        GoodsRequest(catalogId = "", barcode = "ANOTHER_BARCODE", quantity = 20))))
                 .build()
 
         salesOrderMessageChannel.createSalesOrderRequestChannel().send(message)
@@ -45,7 +45,10 @@ class CreateCustomerSalesOrderAggregateRequestListenerTest {
         val salesOrder = salesOrderCustomerRepository.findById(salesOrderId).block(Duration.ofMinutes(1))
 
         assertThat(salesOrder, Is.`is`(customer))
-        val expected = listOf(GoodsRequest(barcode = "A_BARCODE", quantity = 10), GoodsRequest(barcode = "ANOTHER_BARCODE", quantity = 20))
+        val expected = listOf(
+                GoodsRequest(catalogId = "", barcode = "A_BARCODE", quantity = 10),
+                GoodsRequest(catalogId = "", barcode = "ANOTHER_BARCODE", quantity = 20)
+        )
         assertThat(actual, Is.`is`(expected))
     }
 
