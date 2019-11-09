@@ -2,6 +2,7 @@ package it.valeriovaudi.sagaspike.catalogservice
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository
+import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
 import java.math.BigDecimal
 
@@ -17,6 +18,7 @@ data class GoodsWithPrice(val goods: Goods, val price: Price) {
         fun empty() = GoodsWithPrice(Goods("", ""), Price(BigDecimal.ZERO, ""))
     }
 }
+class NoGoodsInCatalogException(message: String) : RuntimeException(message)
 
 interface CatalogRepository : ReactiveMongoRepository<Catalog, String>
 
@@ -29,5 +31,5 @@ class FindGoodsInCatalog(private val catalogRepository: CatalogRepository) {
                     .flatMapIterable { catalog -> catalog.goods }
                     .filter { goodsWithPrice -> goodsWithPrice.goods.barcode == barcode }
                     .toMono()
-                    .defaultIfEmpty(GoodsWithPrice.empty())
+                    .switchIfEmpty(Mono.error(NoGoodsInCatalogException("The Goods $barcode is not in any catalog")))
 }

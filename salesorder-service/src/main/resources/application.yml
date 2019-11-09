@@ -11,6 +11,9 @@ spring:
         goodsPricingResponseChannel:
           group: goodsPricingResponse
 
+        goodsPricingErrorChannel:
+          group: goodsPricingError
+
         reserveGoodsRequestChannel:
           group: reserveGoodsRequest
 

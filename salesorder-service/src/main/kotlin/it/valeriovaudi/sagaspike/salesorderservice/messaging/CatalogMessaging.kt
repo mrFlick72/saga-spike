@@ -37,6 +37,9 @@ interface CatalogMessageChannel {
 
     @Input
     fun goodsPricingResponseChannel(): SubscribableChannel
+
+    @Input
+    fun goodsPricingErrorChannel(): SubscribableChannel
 }
 
 @Component
@@ -48,7 +51,7 @@ class CatalogMessagingListeners {
         output.send(
                 input.flatMap { message ->
                     val payload = ReserveGoodsMessage(message.payload.goods.barcode, message.headers["goods-quantity"] as Int)
-                    println("goodsPricingStreamListener $payload");
+                    println("goodsPricingStreamListener $message");
 
                     MessageBuilder.withPayload(payload)
                             .copyHeaders(mapOf(
