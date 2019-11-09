@@ -1,6 +1,10 @@
 spring:
   cloud:
     stream:
+      kafka:
+        binder:
+          autoAddPartitions: true
+          minPartitionCount: 2
       bindings:
         goodsPricingRequestChannel:
           group: goodsPricingRequest
