@@ -93,13 +93,15 @@ class NewSalesOrderPipelineConfig {
                         println("rollback goods")
                         println(goods)
                         goods.toFlux()
-                                .map { wrapper ->
+                                .flatMap { wrapper ->
                                     wrapper.salesOrderGoods
-                                            .let {
-                                                goodsRepository.delete(it)
-                                                ReserveGoodsMessage(it.barcode, it.quantity)
-                                            }
-
+                                            .let { goodsRepository.delete(it).map { wrapper } }
+                                }
+                                .filter { t -> !t.hasRollback }
+                                .map { wrapper ->
+                                    wrapper.salesOrderGoods.let {
+                                        ReserveGoodsMessage(it.barcode, it.quantity)
+                                    }
                                 }
                     }
                     .channel(MessageChannels.flux())
