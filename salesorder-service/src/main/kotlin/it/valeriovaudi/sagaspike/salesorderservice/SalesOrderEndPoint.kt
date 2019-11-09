@@ -26,14 +26,15 @@ class SalesOrderEndPoint {
     }
 }
 
-data class SalesOrderRepresentation(val salesOrderId: String, val customer: CustomerRepresentation, val goods: List<GoodsRepresentation>, val total: Money) {
+data class SalesOrderRepresentation(val salesOrderId: String, val customer: CustomerRepresentation, val goods: List<GoodsRepresentation>, val total: Money, val status: OrderStatus) {
     companion object {
         fun of(salesOrder: SalesOrderAggregate) =
                 SalesOrderRepresentation(
                         salesOrderId = salesOrder.id,
                         customer = CustomerRepresentation.of(salesOrder.customer),
                         goods = salesOrder.goods.map { GoodsRepresentation.of(it) },
-                        total = salesOrder.total)
+                        total = salesOrder.total,
+                        status = salesOrder.status)
 
     }
 }
