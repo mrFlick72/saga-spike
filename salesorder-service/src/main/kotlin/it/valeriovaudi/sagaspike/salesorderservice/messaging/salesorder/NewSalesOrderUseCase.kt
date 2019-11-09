@@ -33,12 +33,12 @@ interface NewSalesOrderGateway {
 
 
 @Configuration
-class NewSalesOrderPipelineConfig {
+class NewSalesOrderUseCaseConfig {
 
     @Bean
-    fun newSalesOrderPiline(newSalesOrderRequestChannel: MessageChannel,
-                            newSalesOrderResponseChannel: MessageChannel,
-                            salesOrderMessageChannel: SalesOrderMessageChannel) =
+    fun newSalesOrder(newSalesOrderRequestChannel: MessageChannel,
+                      newSalesOrderResponseChannel: MessageChannel,
+                      salesOrderMessageChannel: SalesOrderMessageChannel) =
             IntegrationFlows.from(newSalesOrderRequestChannel)
                     .publishSubscribeChannel { channel ->
                         channel.subscribe { flow ->
@@ -52,6 +52,7 @@ class NewSalesOrderPipelineConfig {
                         }
                     }
                     .get()
+
 
     @Bean
     fun createSalesOrderUseCaseSplittator(createSalesOrderResponseChannel: MessageChannel,
@@ -81,6 +82,25 @@ class NewSalesOrderPipelineConfig {
                     }
                     .get()
 
+}
+
+class SalesOrderGoodsAggregator : DefaultAggregatingMessageGroupProcessor() {
+
+    override fun aggregateHeaders(group: MessageGroup): MutableMap<String, Any> {
+        val aggregateHeaders = super.aggregateHeaders(group)
+        val aggregation = group.messages.stream().anyMatch(::haveToRollback).or(false)
+        aggregateHeaders.put("goods-to-remove", aggregation)
+        return aggregateHeaders
+    }
+}
+
+private fun haveToRollback(message: Message<*>) =
+        message.headers.getOrDefault("goods-to-remove", false) as Boolean
+
+
+@Configuration
+class NewSalesOrderProcessingPipelineConfig {
+
     @Bean
     fun rollbackSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
                                         rollbackSalesOrderGoods: MessageChannel,
@@ -99,9 +119,7 @@ class NewSalesOrderPipelineConfig {
                                 }
                                 .filter { t -> !t.hasRollback }
                                 .map { wrapper ->
-                                    wrapper.salesOrderGoods.let {
-                                        ReserveGoodsMessage(it.barcode, it.quantity)
-                                    }
+                                    wrapper.salesOrderGoods.let { ReserveGoodsMessage(it.barcode, it.quantity) }
                                 }
                     }
                     .channel(MessageChannels.flux())
@@ -127,18 +145,4 @@ class NewSalesOrderPipelineConfig {
                                 }
                         Unit
                     }.get()
-
 }
-
-class SalesOrderGoodsAggregator : DefaultAggregatingMessageGroupProcessor() {
-
-    override fun aggregateHeaders(group: MessageGroup): MutableMap<String, Any> {
-        val aggregateHeaders = super.aggregateHeaders(group)
-        val aggregation = group.messages.stream().anyMatch(::haveToRollback).or(false)
-        aggregateHeaders.put("goods-to-remove", aggregation)
-        return aggregateHeaders
-    }
-}
-
-private fun haveToRollback(message: Message<*>) =
-        message.headers.getOrDefault("goods-to-remove", false) as Boolean
