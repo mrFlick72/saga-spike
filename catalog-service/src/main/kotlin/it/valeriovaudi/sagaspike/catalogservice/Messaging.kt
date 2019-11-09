@@ -44,7 +44,6 @@ class GetPriceListener(private val findGoodsInCatalog: FindGoodsInCatalog) {
                                             .build()
                                 }
                                 .onErrorResume(sendErrorMessage(error, message))
-
                     }
 
                 })

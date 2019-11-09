@@ -1,5 +1,6 @@
 package it.valeriovaudi.sagaspike.salesorderservice.messaging
 
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderGoods
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.MessageUtils.copyHeaders
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
@@ -68,4 +69,20 @@ class CatalogMessagingListeners {
                             .toMono()
                 })
     }
+
+    @StreamListener
+    fun goodsNotInCatalogPricingStreamListener(@Input("goodsPricingErrorChannel") input: Flux<Message<GoodsNotInCatalogMessage>>,
+                                               @Output("responseChannelAdapter") output: FluxSender) {
+        output.send(
+                input.flatMap { message ->
+                    message.payload.let {
+                        println("sendErrorMessage")
+                        Flux.just(MessageBuilder.withPayload(SalesOrderGoodsMessageWrapper(SalesOrderGoods.empty().copy(barcode = it.barcode), true))
+                                .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                                .setHeader("goods-to-remove", true)
+                                .build())
+                    }
+                })
+    }
+
 }

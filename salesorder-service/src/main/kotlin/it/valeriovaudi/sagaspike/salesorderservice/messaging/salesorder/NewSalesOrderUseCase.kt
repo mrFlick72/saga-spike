@@ -113,6 +113,7 @@ class NewSalesOrderProcessingPipelineConfig {
                         println("rollback goods")
                         println(goods)
                         goods.toFlux()
+                                .filter { wrapper -> wrapper.salesOrderGoods.id != null }
                                 .flatMap { wrapper ->
                                     wrapper.salesOrderGoods
                                             .let { goodsRepository.delete(it).map { wrapper } }

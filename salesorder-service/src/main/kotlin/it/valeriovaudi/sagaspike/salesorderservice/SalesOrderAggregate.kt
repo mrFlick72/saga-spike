@@ -12,7 +12,11 @@ import java.math.BigDecimal
 data class SalesOrderAggregate(val id: String, val customer: CustomerSalesOrder, val goods: List<SalesOrderGoods>, val total: Money)
 
 data class CustomerSalesOrder(@Id var id: String? = null, var firstName: String, var lastName: String)
-data class SalesOrderGoods(@Id var id: String? = null, var salesOrderId: String, var barcode: String, var name: String, var quantity: Int, var price: Money) : Serializable
+data class SalesOrderGoods(@Id var id: String? = null, var salesOrderId: String, var barcode: String, var name: String, var quantity: Int, var price: Money) : Serializable {
+    companion object {
+        fun empty() = SalesOrderGoods(salesOrderId = "", barcode = "", name = "", quantity = 0, price = Money())
+    }
+}
 
 data class Money(var value: BigDecimal, var currency: String) : Serializable {
     constructor() : this(BigDecimal.ZERO, "")
@@ -38,13 +42,13 @@ class GetSalesOrder(private val salesOrderCustomerRepository: SalesOrderCustomer
     }
 
     private fun totalFor(goods: List<SalesOrderGoods>) =
-            if(goods.isNotEmpty()) {
+            if (goods.isNotEmpty()) {
                 goods.map { item ->
                     Money(item.price.value.multiply(BigDecimal(item.quantity)), item.price.currency)
                 }.reduce { acc, money ->
                     Money(acc.value.add(money.value), acc.currency)
                 }
-            }else {
+            } else {
                 Money(BigDecimal.ZERO, "EUR")
             }
 }
