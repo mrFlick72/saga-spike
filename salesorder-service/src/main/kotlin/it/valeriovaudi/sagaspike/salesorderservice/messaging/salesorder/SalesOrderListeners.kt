@@ -22,7 +22,7 @@ class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOr
         output.send(
                 input.flatMap { message ->
                     message.payload.let { payload ->
-                        OrderStatusUtils.setSalesOrderStatusTo(OrderStatus.COMPLETE, message.headers, salesOrderStatusRepository)
+                        OrderStatusUtils.setSalesOrderStatusTo(OrderStatus.PENDING, message.headers, salesOrderStatusRepository)
                                 .then(salesOrderCustomerRepository.save(CustomerSalesOrder(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName)))
                                 .flatMap { salesOrder ->
                                     MessageBuilder
