@@ -15,6 +15,10 @@ import reactor.core.publisher.toMono
 import java.io.Serializable
 import java.math.BigDecimal
 
+data class GoodsNotInCatalogMessage(val barcode: String) {
+    constructor() : this("")
+}
+
 data class GoodsPriceMessageRequest(val catalogId: String, val barcode: String) : Serializable
 
 data class GoodsPriceMessageResponse(var goods: CatalogGoods, var price: CatalogPrice) : Serializable {

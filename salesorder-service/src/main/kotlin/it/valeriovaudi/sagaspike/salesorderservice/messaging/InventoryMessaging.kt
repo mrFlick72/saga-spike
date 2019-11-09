@@ -29,6 +29,8 @@ class ReserveGoodsMessage(barcode: String, quantity: Int) : GoodsMessage(barcode
     constructor() : this("", 0)
 }
 
+data class SalesOrderGoodsMessageWrapper(var salesOrderGoods: SalesOrderGoods, var hasRollback: Boolean) : Serializable
+
 interface InventoryMessageChannel {
 
     @Output
@@ -62,7 +64,7 @@ class InventoryMessagingListeners {
                             price = Money(BigDecimal(message.headers["goods-price"] as String), message.headers["currency"] as String))
 
 
-                    MessageBuilder.withPayload(goods)
+                    MessageBuilder.withPayload(SalesOrderGoodsMessageWrapper(goods, false))
                             .copyHeaders(MessageUtils.copyHeaders(message.headers))
                             .setHeader("goods-to-remove", false)
                             .build().toMono()
@@ -90,7 +92,7 @@ class InventoryMessagingListeners {
                     )
 
 
-                    MessageBuilder.withPayload(goods)
+                    MessageBuilder.withPayload(SalesOrderGoodsMessageWrapper(goods, true))
                             .copyHeaders(MessageUtils.copyHeaders(message.headers))
                             .setHeader("goods-to-remove", true)
                             .build().toMono()

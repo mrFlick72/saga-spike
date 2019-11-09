@@ -1,11 +1,7 @@
 package it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder
 
 import it.valeriovaudi.sagaspike.salesorderservice.GoodsRepository
-import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderGoods
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.CatalogMessageChannel
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.GoodsPriceMessageRequest
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.InventoryMessageChannel
-import it.valeriovaudi.sagaspike.salesorderservice.messaging.ReserveGoodsMessage
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.*
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.integration.aggregator.DefaultAggregatingMessageGroupProcessor
@@ -92,14 +88,18 @@ class NewSalesOrderPipelineConfig {
                                         catalogMessageChannel: CatalogMessageChannel,
                                         redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from(rollbackSalesOrderGoods)
-                    .handle { goods: List<SalesOrderGoods>, headers: MessageHeaders ->
+                    .handle { goods: List<SalesOrderGoodsMessageWrapper>, headers: MessageHeaders ->
 
                         println("rollback goods")
                         println(goods)
                         goods.toFlux()
-                                .map {
-                                    goodsRepository.delete(it)
-                                    ReserveGoodsMessage(it.barcode, it.quantity)
+                                .map { wrapper ->
+                                    wrapper.salesOrderGoods
+                                            .let {
+                                                goodsRepository.delete(it)
+                                                ReserveGoodsMessage(it.barcode, it.quantity)
+                                            }
+
                                 }
                     }
                     .channel(MessageChannels.flux())
@@ -115,12 +115,14 @@ class NewSalesOrderPipelineConfig {
                                        redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from(processSalesOrderGoods)
                     .log()
-                    .handle { goods: List<SalesOrderGoods> ->
+                    .handle { goods: List<SalesOrderGoodsMessageWrapper> ->
                         println("processSalesOrderGoods goods")
-
-                        goodsRepository.saveAll(goods)
-                                .subscribeOn(Schedulers.elastic())
-                                .subscribe()
+                        goods.map { it.salesOrderGoods }
+                                .let {
+                                    goodsRepository.saveAll(it)
+                                            .subscribeOn(Schedulers.elastic())
+                                            .subscribe()
+                                }
                         Unit
                     }.get()
 

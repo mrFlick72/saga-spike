@@ -69,7 +69,7 @@ data class GoodsWithPriceMessageRequest(val catalogId: String, val barcode: Stri
     constructor() : this("", "")
 }
 
-data class GoodsNotInCatalogMessage(val catalogId: String) {
+data class GoodsNotInCatalogMessage(val barcode: String) {
     constructor() : this("")
 }
 
