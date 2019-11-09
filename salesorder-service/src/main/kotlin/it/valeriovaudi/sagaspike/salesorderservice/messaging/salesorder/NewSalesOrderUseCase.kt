@@ -20,6 +20,7 @@ import org.springframework.messaging.MessageHeaders
 import org.springframework.messaging.handler.annotation.Payload
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toFlux
+import reactor.core.publisher.toMono
 import reactor.core.scheduler.Schedulers
 import java.util.*
 
@@ -115,12 +116,13 @@ class NewSalesOrderProcessingPipelineConfig {
                         goods.toFlux()
                                 .filter { wrapper -> wrapper.salesOrderGoods.id != null }
                                 .flatMap { wrapper ->
-                                    wrapper.salesOrderGoods
-                                            .let { goodsRepository.delete(it).map { wrapper } }
+                                    wrapper.salesOrderGoods.let {
+                                        goodsRepository.delete(it).thenMany(wrapper.toMono())
+                                    }
                                 }
                                 .filter { t -> !t.hasRollback }
-                                .map { wrapper ->
-                                    wrapper.salesOrderGoods.let { ReserveGoodsMessage(it.barcode, it.quantity) }
+                                .flatMap { wrapper ->
+                                    wrapper.salesOrderGoods.let { ReserveGoodsMessage(it.barcode, it.quantity) }.toMono()
                                 }
                     }
                     .channel(MessageChannels.flux())
