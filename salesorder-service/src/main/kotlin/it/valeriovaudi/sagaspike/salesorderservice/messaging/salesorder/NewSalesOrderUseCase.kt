@@ -1,7 +1,10 @@
 package it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder
 
 import it.valeriovaudi.sagaspike.salesorderservice.GoodsRepository
+import it.valeriovaudi.sagaspike.salesorderservice.OrderStatus
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderStatusRepository
 import it.valeriovaudi.sagaspike.salesorderservice.messaging.*
+import it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder.OrderStatusUtils.setSalesOrderStatusTo
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.integration.aggregator.DefaultAggregatingMessageGroupProcessor
@@ -49,6 +52,7 @@ class NewSalesOrderUseCaseConfig {
 
                         channel.subscribe { flow ->
                             flow.enrichHeaders(mapOf("execution-id" to UUID.randomUUID().toString()))
+                                    .enrich { t: EnricherSpec -> t.headerExpression("sales-order-id", "payload.salesOrderId") }
                                     .channel(salesOrderMessageChannel.createSalesOrderRequestChannel())
                         }
                     }
@@ -104,10 +108,10 @@ class NewSalesOrderProcessingPipelineConfig {
 
     @Bean
     fun rollbackSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
+                                        salesOrderStatusRepository: SalesOrderStatusRepository,
                                         rollbackSalesOrderGoods: MessageChannel,
                                         inventoryMessageChannel: InventoryMessageChannel,
-                                        catalogMessageChannel: CatalogMessageChannel,
-                                        redisMessageStore: RedisMessageStore) =
+                                        catalogMessageChannel: CatalogMessageChannel) =
             IntegrationFlows.from(rollbackSalesOrderGoods)
                     .handle { goods: List<SalesOrderGoodsMessageWrapper>, headers: MessageHeaders ->
 
@@ -117,7 +121,9 @@ class NewSalesOrderProcessingPipelineConfig {
                                 .filter { wrapper -> wrapper.salesOrderGoods.id != null }
                                 .flatMap { wrapper ->
                                     wrapper.salesOrderGoods.let {
-                                        goodsRepository.delete(it).thenMany(wrapper.toMono())
+                                        goodsRepository.delete(it)
+                                                .then(setSalesOrderStatusTo(OrderStatus.ABBORTED, headers, salesOrderStatusRepository))
+                                                .thenMany(wrapper.toMono())
                                     }
                                 }
                                 .filter { t -> !t.hasRollback }
@@ -133,19 +139,22 @@ class NewSalesOrderProcessingPipelineConfig {
 
     @Bean
     fun processSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
+                                       salesOrderStatusRepository: SalesOrderStatusRepository,
                                        processSalesOrderGoods: MessageChannel,
-                                       catalogMessageChannel: CatalogMessageChannel,
-                                       redisMessageStore: RedisMessageStore) =
+                                       catalogMessageChannel: CatalogMessageChannel) =
             IntegrationFlows.from(processSalesOrderGoods)
                     .log()
-                    .handle { goods: List<SalesOrderGoodsMessageWrapper> ->
+                    .handle { message: Message<List<SalesOrderGoodsMessageWrapper>> ->
                         println("processSalesOrderGoods goods")
-                        goods.map { it.salesOrderGoods }
+                        println(message)
+                        message.payload.map { it.salesOrderGoods }
                                 .let {
                                     goodsRepository.saveAll(it)
+                                            .then(setSalesOrderStatusTo(OrderStatus.COMPLETE, message.headers, salesOrderStatusRepository))
                                             .subscribeOn(Schedulers.elastic())
                                             .subscribe()
                                 }
                         Unit
                     }.get()
+
 }

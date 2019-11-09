@@ -11,6 +11,9 @@ import java.math.BigDecimal
 
 data class SalesOrderAggregate(val id: String, val customer: CustomerSalesOrder, val goods: List<SalesOrderGoods>, val total: Money)
 
+data class SalesOrderStatus(@Id var id: String? = null, var salesOrderId: String, var status: OrderStatus)
+enum class OrderStatus { PENDING, COMPLETE, ABBORTED }
+
 data class CustomerSalesOrder(@Id var id: String? = null, var firstName: String, var lastName: String)
 data class SalesOrderGoods(@Id var id: String? = null, var salesOrderId: String, var barcode: String, var name: String, var quantity: Int, var price: Money) : Serializable {
     companion object {
@@ -22,6 +25,7 @@ data class Money(var value: BigDecimal, var currency: String) : Serializable {
     constructor() : this(BigDecimal.ZERO, "")
 }
 
+interface SalesOrderStatusRepository : ReactiveMongoRepository<SalesOrderStatus, String>
 interface SalesOrderCustomerRepository : ReactiveMongoRepository<CustomerSalesOrder, String>
 
 interface GoodsRepository : ReactiveMongoRepository<SalesOrderGoods, String> {

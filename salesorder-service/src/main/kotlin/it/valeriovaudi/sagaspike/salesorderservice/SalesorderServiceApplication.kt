@@ -26,7 +26,9 @@ import java.util.*
 class SalesorderServiceApplication {
 
     @Bean
-    fun createSalesOrderListener(salesOrderCustomerRepository: SalesOrderCustomerRepository) = CreateSalesOrderListener(salesOrderCustomerRepository)
+    fun createSalesOrderListener(salesOrderCustomerRepository: SalesOrderCustomerRepository,
+                                 salesOrderStatusRepository: SalesOrderStatusRepository) =
+            CreateSalesOrderListener(salesOrderCustomerRepository, salesOrderStatusRepository)
 
     @Bean
     @GlobalChannelInterceptor

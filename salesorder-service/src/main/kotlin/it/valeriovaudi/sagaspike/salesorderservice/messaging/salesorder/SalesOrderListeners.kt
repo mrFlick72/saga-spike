@@ -1,7 +1,9 @@
 package it.valeriovaudi.sagaspike.salesorderservice.messaging.salesorder
 
 import it.valeriovaudi.sagaspike.salesorderservice.CustomerSalesOrder
+import it.valeriovaudi.sagaspike.salesorderservice.OrderStatus
 import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderCustomerRepository
+import it.valeriovaudi.sagaspike.salesorderservice.SalesOrderStatusRepository
 import org.springframework.cloud.stream.annotation.Input
 import org.springframework.cloud.stream.annotation.Output
 import org.springframework.cloud.stream.annotation.StreamListener
@@ -11,7 +13,8 @@ import org.springframework.messaging.support.MessageBuilder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.toMono
 
-class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOrderCustomerRepository) {
+class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOrderCustomerRepository,
+                               private val salesOrderStatusRepository: SalesOrderStatusRepository) {
 
     @StreamListener
     fun execute(@Input("createSalesOrderRequestChannel") input: Flux<Message<NewSalesOrderRequest>>,
@@ -19,7 +22,8 @@ class CreateSalesOrderListener(private val salesOrderCustomerRepository: SalesOr
         output.send(
                 input.flatMap { message ->
                     message.payload.let { payload ->
-                        salesOrderCustomerRepository.save(CustomerSalesOrder(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName))
+                        OrderStatusUtils.setSalesOrderStatusTo(OrderStatus.COMPLETE, message.headers, salesOrderStatusRepository)
+                                .then(salesOrderCustomerRepository.save(CustomerSalesOrder(id = payload.salesOrderId, firstName = payload.customer.firstName, lastName = payload.customer.lastName)))
                                 .flatMap { salesOrder ->
                                     MessageBuilder
                                             .withPayload(payload.goods.mapIndexed { index, goods -> newGoodsRequest(goods) })
