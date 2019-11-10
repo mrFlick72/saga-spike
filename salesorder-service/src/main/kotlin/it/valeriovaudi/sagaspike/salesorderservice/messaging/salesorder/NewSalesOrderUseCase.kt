@@ -73,7 +73,6 @@ class NewSalesOrderUseCaseConfig {
     @Bean
     fun createSalesOrderUseCaseAggregator(goodsRepository: GoodsRepository,
                                           responseChannelAdapter: MessageChannel,
-                                          catalogMessageChannel: CatalogMessageChannel,
                                           redisMessageStore: RedisMessageStore) =
             IntegrationFlows.from(responseChannelAdapter)
                     .aggregate { aggregatorSpec ->
@@ -110,8 +109,7 @@ class NewSalesOrderProcessingPipelineConfig {
     fun rollbackSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
                                         salesOrderStatusRepository: SalesOrderStatusRepository,
                                         rollbackSalesOrderGoods: MessageChannel,
-                                        inventoryMessageChannel: InventoryMessageChannel,
-                                        catalogMessageChannel: CatalogMessageChannel) =
+                                        inventoryMessageChannel: InventoryMessageChannel) =
             IntegrationFlows.from(rollbackSalesOrderGoods)
                     .handle { goods: List<SalesOrderGoodsMessageWrapper>, headers: MessageHeaders ->
                         println("rollback goods")
@@ -134,8 +132,7 @@ class NewSalesOrderProcessingPipelineConfig {
     @Bean
     fun processSalesOrderGoodsPipeline(goodsRepository: GoodsRepository,
                                        salesOrderStatusRepository: SalesOrderStatusRepository,
-                                       processSalesOrderGoods: MessageChannel,
-                                       catalogMessageChannel: CatalogMessageChannel) =
+                                       processSalesOrderGoods: MessageChannel) =
             IntegrationFlows.from(processSalesOrderGoods)
                     .log()
                     .handle { message: Message<List<SalesOrderGoodsMessageWrapper>> ->
