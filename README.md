@@ -80,7 +80,7 @@ the transaction span in any case three bounded context
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-3.png)
 It is the listener that take the goods from the catalog with the price and ask to reserve this goods that we know exist on the required catalog
 
-#Conclusion
+# Conclusion
 
 Is SAGA the silver bullet that will save us form the dark and the evil?
 The answer is very simple and it is NO!
