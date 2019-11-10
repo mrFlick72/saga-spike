@@ -150,8 +150,8 @@ class NewSalesOrderProcessingPipelineConfig {
                         message.payload.map { it.salesOrderGoods }
                                 .let {
                                     goodsRepository.saveAll(it)
-                                            .then(setSalesOrderStatusTo(OrderStatus.COMPLETE, message.headers, salesOrderStatusRepository))
                                             .subscribeOn(Schedulers.elastic())
+                                            .then(setSalesOrderStatusTo(OrderStatus.COMPLETE, message.headers, salesOrderStatusRepository))
                                             .subscribe()
                                 }
                         Unit
