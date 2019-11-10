@@ -49,13 +49,46 @@ all reactive and no blocking. For this the my stack is:
 Basically the process starting from the new sales order request from the first branch return to the external the software id 
 for the new sales order and return while in the other branch the system publish on kafka via spring cloud stream. 
 The listener take the message and save the customer like a command on mongo then the list of goods in the original message 
-is splitted, transofrmed for the catalog service and is send to the `Catalog-Service` via a kafka message with spring cloud stream.
+was splitted, transformed for the catalog service and is send to the `Catalog-Service` via a kafka message with spring cloud stream.
 all the rest of teh process before the aggreagation is choreographed on the other two microservices. Even in this case 
 the glue infra microservices is done by messaging wich kafka and spring cloud stream. 
 
 
 ## Take in charge the aggregation just before to commit or rollback 
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-2.png)
+The result of `Inventory-Service` and `Catalog-Service` enter to the orchestrator via a spring cloud stream channel via Kafka, 
+here one listener per possible message is responsable to process the message and transorm the incoming message in a uniform message 
+to send on the aggregator that tanks to a router decide base on the whole aggregation if the transaction should be rollbacked or no.
+It is important to note that right before the aggreagation and the "commit" or rollback of the transaction from the sales order point of view 
+the order is on a pending status and only when the orchestrator decide to process or rolback the trnsation the sales order change status on abborted or completed.
+In case of process the orchestrator send a command to change the status on completed and save the all goods in the order.
+Otherwise the orchestrator send a command to abort the order and send a message for every goods in error on the inventory service 
+to unreserve the goods.
+
+Pay attention that from the sals order point ov view we have a CQRS and event Sourcing implementation all the events produce 
+commands that when applied on the in memory event store give the sales order status. In this case the transacion is not an ACID transactio 
+but a BASE transaction, but in a distributed system it is totally acceptable in my opinion, remember the CAP theorem, we can not have 
+Availability, Consistency and Partition Tolerance on the same time!
+
+The attentive reader probably do not see where is the distribution of transaction if the sales order maintains an internal status. 
+Yes it is true, but the behaviour is not decided from an internal status the outcome of the whole transaction depends for three component and 
+the transaction span in any case three bounded context 
+ 
+
 
 ## Take in charge the reserve of a goods after the process know the goods price
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-3.png)
+It is the listener that take the goods from the catalog with the price and ask to reserve this goods that we know exist on the required catalog
+
+#Conclusion
+Is SAGA the silver bullet that will save us form the dark and the evil?
+The answer is very simple and it is NO!
+
+SAGA is designed to solve a distributed and long lived transaction. Implement SAGA can introduce an high level of 
+complexity but if the use case required a spatial and temporal decoupling SAGA may be for you. Remember the previous discussion 
+of the usage of rest or messaging, use the tre power of a messaging system implies to pay attention how implements request reply 
+service. I have solved this problem returning soon the software id of the sales order then the status is totally Soft (the S of BASE),
+and as soon as the saga is on going the sales order can change all the rest of the integration pipeline is totally fluid and no blocking, it 
+can seems cool but in some system it can be not suitable it is very important that the system can be eventually consistent, soft in the state and 
+Basically Available, in other words BASE. If the system required to be ACID and synchronous with strict bounded time to run the transaction the 
+messaging perhaps is not the best way use all request reply message integration is not a good way to use messaging.         
