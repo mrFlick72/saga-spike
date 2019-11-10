@@ -114,22 +114,16 @@ class NewSalesOrderProcessingPipelineConfig {
                                         catalogMessageChannel: CatalogMessageChannel) =
             IntegrationFlows.from(rollbackSalesOrderGoods)
                     .handle { goods: List<SalesOrderGoodsMessageWrapper>, headers: MessageHeaders ->
-
                         println("rollback goods")
                         println(goods)
-                        goods.toFlux()
-                                .filter { wrapper -> Objects.nonNull(wrapper.salesOrderGoods.id) }
-                                .flatMap { wrapper ->
-                                    wrapper.salesOrderGoods.let {
-                                        goodsRepository.delete(it)
-                                                .then(setSalesOrderStatusTo(OrderStatus.ABBORTED, headers, salesOrderStatusRepository))
-                                                .thenMany(wrapper.toMono())
-                                    }
-                                }
+                        val goodsRollbackFlux = goods.toFlux()
                                 .filter { t -> !t.hasRollback }
                                 .flatMap { wrapper ->
                                     wrapper.salesOrderGoods.let { ReserveGoodsMessage(it.barcode, it.quantity) }.toMono()
                                 }
+
+                        setSalesOrderStatusTo(OrderStatus.ABBORTED, headers, salesOrderStatusRepository)
+                                .thenMany(goodsRollbackFlux)
                     }
                     .channel(MessageChannels.flux())
                     .split()

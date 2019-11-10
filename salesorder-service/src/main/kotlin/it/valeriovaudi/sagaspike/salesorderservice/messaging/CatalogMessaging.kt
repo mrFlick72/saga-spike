@@ -78,7 +78,7 @@ class CatalogMessagingListeners {
                     message.payload.let {
                         println("sendErrorMessage")
                         Flux.just(MessageBuilder.withPayload(SalesOrderGoodsMessageWrapper(SalesOrderGoods.empty().copy(barcode = it.barcode), true))
-                                .copyHeaders(MessageUtils.copyHeaders(message.headers))
+                                .copyHeaders(copyHeaders(message.headers))
                                 .setHeader("goods-to-remove", true)
                                 .build())
                     }
