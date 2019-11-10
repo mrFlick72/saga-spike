@@ -46,6 +46,13 @@ all reactive and no blocking. For this the my stack is:
 
 ## Take in charge the nre sales order saga
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-1.png)
+Basically the process starting from the new sales order request from the first branch return to the external the software id 
+for the new sales order and return while in the other branch the system publish on kafka via spring cloud stream. 
+The listener take the message and save the customer like a command on mongo then the list of goods in the original message 
+is splitted, transofrmed for the catalog service and is send to the `Catalog-Service` via a kafka message with spring cloud stream.
+all the rest of teh process before the aggreagation is choreographed on the other two microservices. Even in this case 
+the glue infra microservices is done by messaging wich kafka and spring cloud stream. 
+
 
 ## Take in charge the aggregation just before to commit or rollback 
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-2.png)
