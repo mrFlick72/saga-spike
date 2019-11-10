@@ -44,6 +44,11 @@ all reactive and no blocking. For this the my stack is:
 * Redis as Message Store 
 * Docker in order to provide all the infrastructure for test by your self the spike with just a `docker-compose up` command. 
 
+## Take in charge the nre sales order saga
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-1.png)
+
+## Take in charge the aggregation just before to commit or rollback 
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-2.png)
+
+## Take in charge the reserve of a goods after the process know the goods price
 ![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-3.png)
