@@ -86,10 +86,10 @@ Is SAGA the silver bullet that will save us form the dark and the evil?
 The answer is very simple and it is NO!
 
 SAGA is designed to solve a distributed and long lived transaction. Implement SAGA can introduce an high level of 
-complexity but if the use case required a spatial and temporal decoupling SAGA may be for you. Remember the previous discussion 
-of the usage of rest or messaging, use the tre power of a messaging system implies to pay attention how implements request reply 
-service. I have solved this problem returning soon the software id of the sales order then the status is totally Soft (the S of BASE),
-and as soon as the saga is on going the sales order can change all the rest of the integration pipeline is totally fluid and no blocking, it 
-can seems cool but in some system it can be not suitable it is very important that the system can be eventually consistent, soft in the state and 
-Basically Available, in other words BASE. If the system required to be ACID and synchronous with strict bounded time to run the transaction the 
+complexity but if the use case required distributed long lived transaction in wich heve a spatial and temporal decoupling is a must
+SAGA may be for you. Remember the previous discussion of the usage of rest or messaging, use the tre power of a messaging system implies 
+to pay attention how implements request reply service. I have solved this problem returning soon the software id of the sales order then 
+the status is totally Soft (the S of BASE),and as soon as the saga is on going the sales order can change all the rest of the integration pipeline 
+is totally fluid and no blocking, it can seems cool but in some system it can be not suitable it is very important that the system can be eventually consistent,
+ soft in the state and Basically Available, in other words BASE. If the system required to be ACID and synchronous with strict bounded time to run the transaction the 
 messaging perhaps is not the best way use all request reply message integration is not a good way to use messaging.         
