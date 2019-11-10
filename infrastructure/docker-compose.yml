@@ -24,13 +24,17 @@ services:
       - ZOOKEEPER_CLIENT_PORT=2181
     networks:
       - zookeeper
-#  mongo:
-#    image: mongo
-#    ports:
-#      - "27017:27017"
-#    volumes:
-#      - "${MONGO_VOLUME}:/var/lib/mongodb"
-
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - "${MONGO_VOLUME}:/var/lib/mongodb"
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - 6379:6379
 networks:
   zookeeper:
     driver: bridge
