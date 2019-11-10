@@ -44,4 +44,6 @@ all reactive and no blocking. For this the my stack is:
 * Redis as Message Store 
 * Docker in order to provide all the infrastructure for test by your self the spike with just a `docker-compose up` command. 
 
-
+![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-1.png)
+![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-2.png)
+![](https://github.com/mrFlick72/saga-spike/blob/master/img/SAGA-3.png)
